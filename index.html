@@ -1,1 +1,739 @@
-"Hello world"
+<!DOCTYPE html>
+<html lang="sv">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Karlskoga Live Befolkningsstatistik</title>
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>📊</text></svg>">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 20px;
+            padding: 30px;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+            backdrop-filter: blur(10px);
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 40px;
+            padding-bottom: 20px;
+            border-bottom: 2px solid #e0e0e0;
+        }
+
+        .header h1 {
+            color: #333;
+            font-size: 2.5em;
+            margin-bottom: 10px;
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .header p {
+            color: #666;
+            font-size: 1.1em;
+        }
+
+        .controls {
+            display: flex;
+            justify-content: center;
+            gap: 20px;
+            margin-bottom: 30px;
+            flex-wrap: wrap;
+        }
+
+        .control-group {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .control-group label {
+            font-weight: 600;
+            color: #555;
+            font-size: 0.9em;
+        }
+
+        select, button {
+            padding: 12px 20px;
+            border: 2px solid #ddd;
+            border-radius: 10px;
+            font-size: 16px;
+            transition: all 0.3s ease;
+            background: white;
+        }
+
+        select:focus, button:hover:not(:disabled) {
+            border-color: #667eea;
+            outline: none;
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.3);
+        }
+
+        button {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+            border: none;
+            cursor: pointer;
+            font-weight: 600;
+            min-width: 150px;
+        }
+
+        button:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
+        }
+
+        .button-group {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+
+        .btn-secondary {
+            background: linear-gradient(135deg, #28a745, #20c997);
+        }
+
+        .btn-warning {
+            background: linear-gradient(135deg, #ffc107, #ff8c00);
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+            gap: 20px;
+            margin-bottom: 40px;
+        }
+
+        .stat-card {
+            background: white;
+            padding: 25px;
+            border-radius: 15px;
+            text-align: center;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+            border: 1px solid #f0f0f0;
+            transition: transform 0.3s ease;
+            position: relative;
+        }
+
+        .stat-card:hover {
+            transform: translateY(-5px);
+        }
+
+        .stat-card.live::before {
+            content: "🔴 LIVE";
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            background: #ff4444;
+            color: white;
+            font-size: 0.7em;
+            padding: 2px 6px;
+            border-radius: 10px;
+            font-weight: bold;
+        }
+
+        .stat-card h3 {
+            color: #667eea;
+            font-size: 1.1em;
+            margin-bottom: 10px;
+        }
+
+        .stat-card .value {
+            font-size: 2.2em;
+            font-weight: bold;
+            color: #333;
+            margin-bottom: 5px;
+        }
+
+        .stat-card .change {
+            font-size: 0.9em;
+            padding: 4px 8px;
+            border-radius: 20px;
+            font-weight: 600;
+        }
+
+        .change.positive {
+            background: #e8f5e8;
+            color: #2e8b57;
+        }
+
+        .change.negative {
+            background: #ffe8e8;
+            color: #dc143c;
+        }
+
+        .chart-container {
+            background: white;
+            padding: 30px;
+            border-radius: 15px;
+            margin-bottom: 30px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+            min-height: 400px;
+        }
+
+        .chart-title {
+            font-size: 1.4em;
+            color: #333;
+            margin-bottom: 20px;
+            text-align: center;
+            font-weight: 600;
+        }
+
+        .error {
+            background: #ffe8e8;
+            color: #dc143c;
+            padding: 20px;
+            border-radius: 10px;
+            margin: 20px 0;
+            border-left: 4px solid #dc143c;
+        }
+
+        .success {
+            background: #e8f5e8;
+            color: #2e8b57;
+            padding: 20px;
+            border-radius: 10px;
+            margin: 20px 0;
+            border-left: 4px solid #2e8b57;
+        }
+
+        .warning {
+            background: #fff3cd;
+            color: #856404;
+            padding: 20px;
+            border-radius: 10px;
+            margin: 20px 0;
+            border-left: 4px solid #ffc107;
+        }
+
+        .info {
+            background: #e8f4f8;
+            color: #2c5282;
+            padding: 15px;
+            border-radius: 10px;
+            margin: 20px 0;
+            border-left: 4px solid #2c5282;
+            font-size: 0.95em;
+        }
+
+        .data-source {
+            font-size: 0.8em;
+            color: #666;
+            margin-top: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 5px;
+        }
+
+        .live-indicator {
+            display: inline-block;
+            width: 8px;
+            height: 8px;
+            background: #00ff00;
+            border-radius: 50%;
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0% { opacity: 1; }
+            50% { opacity: 0.3; }
+            100% { opacity: 1; }
+        }
+
+        .config-error {
+            background: #ff4444;
+            color: white;
+            padding: 20px;
+            border-radius: 10px;
+            margin: 20px 0;
+            text-align: center;
+            font-weight: bold;
+        }
+
+        canvas {
+            max-width: 100%;
+            height: auto;
+        }
+
+        @media (max-width: 768px) {
+            .container {
+                padding: 20px;
+            }
+            
+            .header h1 {
+                font-size: 2em;
+            }
+            
+            .controls {
+                flex-direction: column;
+                align-items: center;
+            }
+            
+            .stats-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .button-group {
+                flex-direction: column;
+                align-items: center;
+            }
+        }
+    </style>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.9.1/chart.min.js"></script>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>📊 Karlskoga Live Befolkningsstatistik</h1>
+            <p>Live data från Statistiska centralbyrån (SCB) via Supabase Edge Functions</p>
+        </div>
+
+        <div class="controls">
+            <div class="control-group">
+                <label for="datasetSelect">Datatyp:</label>
+                <select id="datasetSelect">
+                    <option value="population">Befolkning totalt</option>
+                    <option value="age">Åldersfördelning</option>
+                    <option value="trend">Befolkningstrend</option>
+                </select>
+            </div>
+            <div class="control-group">
+                <label for="updateMode">Uppdateringsläge:</label>
+                <select id="updateMode">
+                    <option value="auto">Automatisk cache</option>
+                    <option value="force">Tvinga live-hämtning</option>
+                    <option value="cache">Endast cache</option>
+                </select>
+            </div>
+            <div class="control-group">
+                <label>&nbsp;</label>
+                <div class="button-group">
+                    <button onclick="testConnection()" id="testBtn" class="btn-secondary">Testa API</button>
+                    <button onclick="loadLiveData()" id="loadBtn">Hämta Live Data</button>
+                </div>
+            </div>
+        </div>
+
+        <div class="info" id="statusMessage">
+            <strong>ℹ️ Status:</strong> <span id="statusText">Redo att hämta live data från SCB via Supabase Edge Function</span>
+            <div class="data-source" id="dataSource" style="display: none;">
+                <span class="live-indicator"></span>
+                <span id="sourceText">Källa okänd</span>
+            </div>
+        </div>
+
+        <div id="configError" class="config-error" style="display: none;">
+            ⚠️ Konfigurationsfel: Uppdatera js/config.js med dina Supabase-uppgifter
+        </div>
+
+        <div class="stats-grid" id="statsGrid">
+            <!-- Stats cards will be populated here -->
+        </div>
+
+        <div class="chart-container">
+            <div class="chart-title">Befolkningsutveckling i Karlskoga kommun</div>
+            <canvas id="populationChart"></canvas>
+        </div>
+
+        <div class="chart-container">
+            <div class="chart-title">Åldersfördelning</div>
+            <canvas id="ageChart"></canvas>
+        </div>
+    </div>
+
+    <!-- Ladda våra API-filer -->
+    <script src="js/config.js"></script>
+    <script src="js/api.js"></script>
+
+    <script>
+        // Aktuell data som visas
+        let currentData = {
+            population: {
+                '2021': 30045,
+                '2022': 30189,
+                '2023': 30261,
+                '2024': 30167,
+                '2025': 30120
+            },
+            ageGroups: {
+                '0-17': 5060,
+                '18-64': 17170,
+                '65+': 7890
+            },
+            metadata: {
+                source: 'Exempel-data',
+                lastUpdated: new Date().toISOString()
+            }
+        };
+
+        let populationChart = null;
+        let ageChart = null;
+        let isLiveData = false;
+
+        // Initiera när sidan laddas
+        document.addEventListener('DOMContentLoaded', function() {
+            console.log('🚀 Live Dashboard initierad');
+            
+            // Kontrollera konfiguration
+            if (!scbApi.isConfigValid()) {
+                showConfigError();
+                return;
+            }
+            
+            displayCurrentData();
+            updateStatus('Redo att hämta live data från SCB via Supabase Edge Function', 'info');
+        });
+
+        function showConfigError() {
+            document.getElementById('configError').style.display = 'block';
+            updateStatus('Konfigurationsfel - se instruktioner ovan', 'error');
+        }
+
+        // Uppdatera status-meddelandet
+        function updateStatus(message, type = 'info') {
+            const statusElement = document.getElementById('statusMessage');
+            const statusText = document.getElementById('statusText');
+            
+            statusText.textContent = message;
+            statusElement.className = type;
+            
+            console.log(`📢 Status (${type}):`, message);
+        }
+
+        function updateDataSource(source, cached = false, ageMinutes = 0) {
+            const dataSourceEl = document.getElementById('dataSource');
+            const sourceTextEl = document.getElementById('sourceText');
+            
+            let sourceText = '';
+            let showIndicator = false;
+            
+            switch(source) {
+                case 'scb_live':
+                    sourceText = 'Live data från SCB';
+                    showIndicator = true;
+                    break;
+                case 'scb_cached':
+                    sourceText = `Cached SCB-data (${ageMinutes} min gammal)`;
+                    break;
+                case 'fallback_quality':
+                    sourceText = 'Kvalitetsdata (SCB-baserat)';
+                    break;
+                case 'local_fallback':
+                    sourceText = 'Lokal fallback-data';
+                    break;
+                default:
+                    sourceText = 'Okänd datakälla';
+            }
+            
+            sourceTextEl.textContent = sourceText;
+            dataSourceEl.style.display = 'flex';
+            
+            const indicator = dataSourceEl.querySelector('.live-indicator');
+            indicator.style.display = showIndicator ? 'inline-block' : 'none';
+        }
+
+        // Visa aktuell data
+        function displayCurrentData() {
+            updateStatsCards();
+            createPopulationChart();
+            createAgeChart();
+        }
+
+        // Uppdatera statistikkorten
+        function updateStatsCards() {
+            const statsGrid = document.getElementById('statsGrid');
+            const years = Object.keys(currentData.population).sort();
+            const latestYear = years[years.length - 1];
+            const previousYear = years[years.length - 2];
+            
+            const currentPop = currentData.population[latestYear];
+            const previousPop = currentData.population[previousYear] || currentPop;
+            const change = currentPop - previousPop;
+            const changePercent = previousPop > 0 ? ((change / previousPop) * 100).toFixed(2) : 0;
+
+            const liveClass = isLiveData ? 'live' : '';
+
+            statsGrid.innerHTML = `
+                <div class="stat-card ${liveClass}">
+                    <h3>Total befolkning ${latestYear}</h3>
+                    <div class="value">${currentPop.toLocaleString('sv-SE')}</div>
+                    <div class="change ${change >= 0 ? 'positive' : 'negative'}">
+                        ${change >= 0 ? '↗' : '↘'} ${Math.abs(change)} (${Math.abs(changePercent)}%)
+                    </div>
+                </div>
+                <div class="stat-card ${liveClass}">
+                    <h3>Barn & Ungdomar (0-17)</h3>
+                    <div class="value">${currentData.ageGroups['0-17'].toLocaleString('sv-SE')}</div>
+                    <div class="change">${((currentData.ageGroups['0-17'] / currentPop) * 100).toFixed(1)}%</div>
+                </div>
+                <div class="stat-card ${liveClass}">
+                    <h3>Arbetskraften (18-64)</h3>
+                    <div class="value">${currentData.ageGroups['18-64'].toLocaleString('sv-SE')}</div>
+                    <div class="change">${((currentData.ageGroups['18-64'] / currentPop) * 100).toFixed(1)}%</div>
+                </div>
+                <div class="stat-card ${liveClass}">
+                    <h3>Pensionärer (65+)</h3>
+                    <div class="value">${currentData.ageGroups['65+'].toLocaleString('sv-SE')}</div>
+                    <div class="change">${((currentData.ageGroups['65+'] / currentPop) * 100).toFixed(1)}%</div>
+                </div>
+            `;
+        }
+
+        // Skapa befolkningsdiagram
+        function createPopulationChart() {
+            const ctx = document.getElementById('populationChart').getContext('2d');
+            
+            if (populationChart) {
+                populationChart.destroy();
+            }
+
+            const years = Object.keys(currentData.population).sort();
+            const values = years.map(year => currentData.population[year]);
+
+            populationChart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: years,
+                    datasets: [{
+                        label: 'Befolkning',
+                        data: values,
+                        borderColor: isLiveData ? '#00ff00' : '#667eea',
+                        backgroundColor: isLiveData ? 'rgba(0, 255, 0, 0.1)' : 'rgba(102, 126, 234, 0.1)',
+                        borderWidth: 3,
+                        fill: true,
+                        tension: 0.4,
+                        pointBackgroundColor: isLiveData ? '#00ff00' : '#667eea',
+                        pointBorderColor: '#fff',
+                        pointBorderWidth: 2,
+                        pointRadius: 6
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        y: {
+                            beginAtZero: false,
+                            grid: { color: 'rgba(0,0,0,0.1)' },
+                            ticks: {
+                                callback: function(value) {
+                                    return value.toLocaleString('sv-SE');
+                                }
+                            }
+                        },
+                        x: { grid: { color: 'rgba(0,0,0,0.1)' } }
+                    },
+                    plugins: {
+                        legend: { display: false },
+                        tooltip: {
+                            backgroundColor: 'rgba(0,0,0,0.8)',
+                            titleColor: '#fff',
+                            bodyColor: '#fff',
+                            borderColor: isLiveData ? '#00ff00' : '#667eea',
+                            borderWidth: 1,
+                            callbacks: {
+                                label: function(context) {
+                                    return 'Befolkning: ' + context.parsed.y.toLocaleString('sv-SE');
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        // Skapa åldersdiagram
+        function createAgeChart() {
+            const ctx = document.getElementById('ageChart').getContext('2d');
+            
+            if (ageChart) {
+                ageChart.destroy();
+            }
+
+            const labels = Object.keys(currentData.ageGroups);
+            const values = Object.values(currentData.ageGroups);
+
+            const colors = isLiveData ? 
+                ['#00ff00', '#00cc00', '#009900'] : 
+                ['#667eea', '#764ba2', '#f093fb'];
+
+            ageChart = new Chart(ctx, {
+                type: 'doughnut',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        data: values,
+                        backgroundColor: colors,
+                        borderWidth: 3,
+                        borderColor: '#fff'
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            position: 'bottom',
+                            labels: {
+                                padding: 20,
+                                usePointStyle: true,
+                                font: { size: 14 }
+                            }
+                        },
+                        tooltip: {
+                            backgroundColor: 'rgba(0,0,0,0.8)',
+                            titleColor: '#fff',
+                            bodyColor: '#fff',
+                            borderColor: isLiveData ? '#00ff00' : '#667eea',
+                            borderWidth: 1,
+                            callbacks: {
+                                label: function(context) {
+                                    const total = context.dataset.data.reduce((a, b) => a + b, 0);
+                                    const percentage = ((context.parsed / total) * 100).toFixed(1);
+                                    return context.label + ': ' + context.parsed.toLocaleString('sv-SE') + ' (' + percentage + '%)';
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        // Testa API-anslutning
+        async function testConnection() {
+            if (!scbApi.isConfigValid()) {
+                showConfigError();
+                return;
+            }
+
+            const testBtn = document.getElementById('testBtn');
+            const originalText = testBtn.textContent;
+            
+            testBtn.disabled = true;
+            testBtn.textContent = 'Testar...';
+            
+            updateStatus('Testar anslutning till Supabase Edge Function...', 'info');
+
+            try {
+                const result = await scbApi.testConnection();
+                
+                if (result.success) {
+                    updateStatus('✅ ' + result.message, 'success');
+                    testBtn.textContent = 'Test ✅';
+                    testBtn.className = 'btn-secondary';
+                } else {
+                    updateStatus('⚠️ ' + result.message, 'warning');
+                    testBtn.textContent = 'Test ⚠️';
+                    testBtn.className = 'btn-warning';
+                }
+
+            } catch (error) {
+                updateStatus('❌ Anslutningstest misslyckades: ' + error.message, 'error');
+                testBtn.textContent = 'Test ❌';
+                testBtn.className = 'error';
+                console.error('Test fel:', error);
+            }
+
+            // Återställ knappen efter 3 sekunder
+            setTimeout(() => {
+                testBtn.textContent = originalText;
+                testBtn.className = 'btn-secondary';
+                testBtn.disabled = false;
+            }, 3000);
+        }
+
+        // Hämta live data
+        async function loadLiveData() {
+            if (!scbApi.isConfigValid()) {
+                showConfigError();
+                return;
+            }
+
+            const loadBtn = document.getElementById('loadBtn');
+            const originalText = loadBtn.textContent;
+            
+            loadBtn.disabled = true;
+            loadBtn.textContent = 'Hämtar live data...';
+            
+            updateStatus('Hämtar live befolkningsdata från SCB via Edge Function...', 'info');
+
+            try {
+                console.log('🔄 Startar live datahämtning...');
+                
+                const result = await scbApi.getPopulationData();
+                console.log('📊 Live API-resultat:', result);
+                
+                if (result.success && result.data) {
+                    updateStatus('✅ ' + result.message, 'success');
+                    
+                    // Uppdatera data
+                    console.log('🔄 Uppdaterar dashboard med live data...');
+                    
+                    currentData.population = {};
+                    for (let i = 0; i < result.data.years.length; i++) {
+                        currentData.population[result.data.years[i]] = result.data.populations[i];
+                    }
+                    currentData.ageGroups = result.data.ageGroups;
+                    currentData.metadata = result.data.metadata || {};
+                    
+                    // Markera som live data
+                    isLiveData = result.dataSource === 'scb_live';
+                    
+                    // Uppdatera visualiseringar
+                    displayCurrentData();
+                    
+                    // Uppdatera datakälla-info
+                    const cacheAge = result.message.includes('min') ? 
+                        parseInt(result.message.match(/(\d+) min/)?.[1] || '0') : 0;
+                    updateDataSource(result.dataSource, result.dataSource.includes('cached'), cacheAge);
+                    
+                    loadBtn.textContent = 'Live data hämtad ✅';
+                    
+                    console.log('✅ Dashboard uppdaterad med live data');
+                    
+                } else {
+                    throw new Error('Ingen giltig data mottagen från API');
+                }
+
+            } catch (error) {
+                updateStatus('❌ Fel vid live datahämtning: ' + error.message, 'error');
+                console.error('❌ Live datahämtningsfel:', error);
+                
+                loadBtn.textContent = 'Fel ❌';
+            }
+
+            // Återställ knappen efter 3 sekunder
+            setTimeout(() => {
+                loadBtn.textContent = originalText;
+                loadBtn.disabled = false;
+            }, 3000);
+        }
+
+        // Logga att allt är laddat
+        console.log('🎉 Live Dashboard fullständigt laddat och redo!');
+    </script>
+</body>
+</html>
