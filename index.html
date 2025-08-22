@@ -1,74 +1,4 @@
-// Hämta ny live data (ersätter generateNewData)
-        async function generateNewData() {
-            const button = document.querySelector('button[onclick="generateNewData()"]');
-            const originalText = button.textContent;
-            
-            button.disabled = true;
-            button.textContent = 'Hämtar live data...';
-            
-            const success = await fetchLiveData(true); // Force refresh
-            
-            if (success) {
-                updateStats();
-                updateVisualization();
-                createAgeChart();
-                button.textContent = 'Live data hämtad ✅';
-            } else {
-                // Fallback till lokal fallback från din API
-                updateStatus('Använder lokal fallback data', 'warning');
-                const fallbackResult = scbApi.generateLocalFallback();
-                
-                // Konvertera fallback-data
-                data = {
-                    years: fallbackResult.years,
-                    population: {},
-                    immigration: {},
-                    emigration: {},
-                    births: {},
-                    deaths: {},
-                    ageGroups: {},
-                    prognosis: {}
-                };
-                
-                // Bygga population-objektet från fallback
-                fallbackResult.years.forEach((year, index) => {
-                    data.population[year] = fallbackResult.populations[index];
-                });
-                
-                // Lägg till åldersgrupper
-                const latestYear = data.years[data.years.length - 1];
-                data.ageGroups[latestYear] = convertAgeGroups(fallbackResult.ageGroups);
-                
-                // Generera kompletterande data
-                generateSupplementaryData();
-                
-                isLiveData = false;
-                updateStats();
-                updateVisualization();
-                createAgeChart();
-                button.textContent = 'Fallback data laddad ⚠️';
-            }
-            
-            setTimeout(() => {
-                button.textContent = originalText;
-                button.disabled = false;
-            }, 3000);
-        }
-
-        // Test API-anslutning med din API
-        async function testApiConnection() {
-            updateStatus('Testar anslutning till SCB API...', 'info');
-            
-            const result = await scbApi.testConnection();
-            
-            if (result.success) {
-                updateStatus('✅ ' + result.message, 'success');
-            } else {
-                updateStatus('❌ ' + result.message, 'error');
-            }
-        }
-
-        // Initiera applikationen med din API
+// Initiera applikationen med din API
         document.addEventListener('DOMContentLoaded', async function() {
             debugLog('🚀 Karlskoga SCB Dashboard startar...');
             
@@ -92,7 +22,52 @@
                     data.population[year] = fallbackResult.populations[index];
                 });
                 
-                const lat<!DOCTYPE html>
+                const latestYear = data.years[data.years.length - 1];
+                data.ageGroups[latestYear] = convertAgeGroups(fallbackResult.ageGroups);
+                generateSupplementaryData();
+                
+                isLiveData = false;
+            } else {
+                // Försök hämta live data först
+                const success = await fetchLiveData(false);
+                
+                if (!success) {
+                    debugLog('⚠️ Live data misslyckades, använder fallback');
+                    
+                    const fallbackResult = scbApi.generateLocalFallback();
+                    data = {
+                        years: fallbackResult.years,
+                        population: {},
+                        immigration: {},
+                        emigration: {},
+                        births: {},
+                        deaths: {},
+                        ageGroups: {},
+                        prognosis: {}
+                    };
+                    
+                    fallbackResult.years.forEach((year, index) => {
+                        data.population[year] = fallbackResult.populations[index];
+                    });
+                    
+                    const latestYear = data.years[data.years.length - 1];
+                    data.ageGroups[latestYear] = convertAgeGroups(fallbackResult.ageGroups);
+                    generateSupplementaryData();
+                    
+                    isLiveData = false;
+                }
+            }
+            
+            // Visa dashboard
+            updateStats();
+            updateVisualization();
+            createAgeChart();
+            
+            debugLog('✅ Dashboard initierad:', isLiveData ? 'MED live SCB-data' : 'med fallback data');
+        });
+    </script>
+</body>
+</html><!DOCTYPE html>
 <html lang="sv">
 <head>
     <meta charset="UTF-8">
@@ -243,7 +218,7 @@
             </div>
             <div class="control-group">
                 <label>&nbsp;</label>
-                <button onclick="generateNewData()">Ny simulering</button>
+                <button onclick="loadNewLiveData()" id="loadBtn">Hämta live data</button>
             </div>
         </div>
 
