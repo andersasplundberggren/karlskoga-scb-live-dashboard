@@ -186,13 +186,51 @@
 
         .chart-container {
             background: white;
-            padding: 30px;
+            padding: 20px;
             border-radius: 15px;
             margin-bottom: 30px;
             box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
-            min-height: 400px;
+            min-height: 350px;
+            max-height: 500px;
+            position: relative;
         }
 
+        .chart-canvas-container {
+            position: relative;
+            height: 400px;
+            width: 100%;
+        }
+
+        .chart-canvas-container canvas {
+            position: absolute !important;
+            top: 0;
+            left: 0;
+            width: 100% !important;
+            height: 100% !important;
+        }
+
+        @media (max-width: 1200px) {
+            .chart-canvas-container {
+                height: 350px;
+            }
+        }
+
+        @media (max-width: 768px) {
+            .chart-container {
+                padding: 15px;
+                min-height: 300px;
+            }
+            
+            .chart-canvas-container {
+                height: 300px;
+            }
+        }
+
+        @media (max-width: 480px) {
+            .chart-canvas-container {
+                height: 250px;
+            }
+        }
         .chart-title {
             font-size: 1.4em;
             color: #333;
@@ -353,14 +391,55 @@
             <!-- Stats cards will be populated here -->
         </div>
 
+        <div class="controls">
+            <div class="control-group">
+                <label for="datasetSelect">Datatyp:</label>
+                <select id="datasetSelect" onchange="changeDataVisualization()">
+                    <option value="population">Befolkning totalt</option>
+                    <option value="age">Åldersfördelning</option>
+                    <option value="trend">Befolkningstrend</option>
+                    <option value="growth">Tillväxttakt</option>
+                    <option value="projection">Framtidsprognos</option>
+                </select>
+            </div>
+            <div class="control-group">
+                <label for="chartType">Diagramtyp:</label>
+                <select id="chartType" onchange="changeChartType()">
+                    <option value="line">Linjediagram</option>
+                    <option value="bar">Stapeldiagram</option>
+                    <option value="area">Områdesdiagram</option>
+                </select>
+            </div>
+            <div class="control-group">
+                <label for="updateMode">Uppdateringsläge:</label>
+                <select id="updateMode">
+                    <option value="auto">Smart cache (rekommenderat)</option>
+                    <option value="force">Tvinga ny hämtning</option>
+                    <option value="cache">Endast cached data</option>
+                </select>
+            </div>
+            <div class="control-group">
+                <label>&nbsp;</label>
+                <div class="button-group">
+                    <button onclick="testConnection()" id="testBtn" class="btn-secondary">Testa API</button>
+                    <button onclick="loadLiveData()" id="loadBtn">Hämta Live Data</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Dynamisk chart-container -->
         <div class="chart-container">
-            <div class="chart-title">Befolkningsutveckling i Karlskoga kommun</div>
-            <canvas id="populationChart"></canvas>
+            <div class="chart-title" id="mainChartTitle">Befolkningsutveckling i Karlskoga kommun</div>
+            <div class="chart-canvas-container">
+                <canvas id="mainChart"></canvas>
+            </div>
         </div>
 
         <div class="chart-container">
             <div class="chart-title">Åldersfördelning</div>
-            <canvas id="ageChart"></canvas>
+            <div class="chart-canvas-container">
+                <canvas id="ageChart"></canvas>
+            </div>
         </div>
     </div>
 
@@ -734,6 +813,320 @@
 
         // Logga att allt är laddat
         console.log('🎉 Live Dashboard fullständigt laddat och redo!');
+
+        // Nya funktioner för datavisualisering
+        let mainChart = null;
+        let currentVisualization = 'population';
+        let currentChartType = 'line';
+
+        function changeDataVisualization() {
+            const selector = document.getElementById('datasetSelect');
+            currentVisualization = selector.value;
+            
+            console.log('🔄 Byter till visualisering:', currentVisualization);
+            createMainChart();
+            updateChartTitle();
+        }
+
+        function changeChartType() {
+            const selector = document.getElementById('chartType');
+            currentChartType = selector.value;
+            
+            console.log('🔄 Byter till diagramtyp:', currentChartType);
+            createMainChart();
+        }
+
+        function updateChartTitle() {
+            const titleElement = document.getElementById('mainChartTitle');
+            const titles = {
+                population: 'Befolkningsutveckling i Karlskoga kommun',
+                age: 'Åldersfördelning över tid',
+                trend: 'Befolkningstrender och förändringar',
+                growth: 'Årlig tillväxttakt (%)',
+                projection: 'Befolkningsprognos framtida år'
+            };
+            
+            titleElement.textContent = titles[currentVisualization] || 'Befolkningsdata';
+        }
+
+        function createMainChart() {
+            const ctx = document.getElementById('mainChart').getContext('2d');
+            
+            if (mainChart) {
+                mainChart.destroy();
+            }
+
+            const data = prepareChartData();
+            const config = getChartConfig(data);
+            
+            mainChart = new Chart(ctx, config);
+        }
+
+        function prepareChartData() {
+            const years = Object.keys(currentData.population).sort();
+            
+            switch (currentVisualization) {
+                case 'population':
+                    return {
+                        labels: years,
+                        datasets: [{
+                            label: 'Befolkning',
+                            data: years.map(year => currentData.population[year]),
+                            borderColor: getVisualizationColor(),
+                            backgroundColor: getVisualizationColor(true),
+                            borderWidth: 3,
+                            fill: currentChartType === 'area'
+                        }]
+                    };
+                    
+                case 'growth':
+                    const growthData = calculateGrowthRates();
+                    return {
+                        labels: growthData.years,
+                        datasets: [{
+                            label: 'Tillväxt (%)',
+                            data: growthData.rates,
+                            borderColor: '#ff6384',
+                            backgroundColor: 'rgba(255, 99, 132, 0.2)',
+                            borderWidth: 3,
+                            fill: currentChartType === 'area'
+                        }]
+                    };
+                    
+                case 'projection':
+                    const projectionData = generateProjection();
+                    return {
+                        labels: projectionData.years,
+                        datasets: [
+                            {
+                                label: 'Historisk data',
+                                data: projectionData.historical,
+                                borderColor: getVisualizationColor(),
+                                backgroundColor: getVisualizationColor(true),
+                                borderWidth: 3,
+                                fill: false
+                            },
+                            {
+                                label: 'Prognos',
+                                data: projectionData.projected,
+                                borderColor: '#ff9800',
+                                backgroundColor: 'rgba(255, 152, 0, 0.2)',
+                                borderWidth: 3,
+                                borderDash: [5, 5],
+                                fill: false
+                            }
+                        ]
+                    };
+                    
+                case 'trend':
+                    const trendData = calculateTrends();
+                    return {
+                        labels: trendData.years,
+                        datasets: [
+                            {
+                                label: 'Faktisk befolkning',
+                                data: trendData.actual,
+                                borderColor: getVisualizationColor(),
+                                backgroundColor: getVisualizationColor(true),
+                                borderWidth: 3,
+                                fill: false
+                            },
+                            {
+                                label: 'Trendlinje',
+                                data: trendData.trend,
+                                borderColor: '#e74c3c',
+                                backgroundColor: 'rgba(231, 76, 60, 0.1)',
+                                borderWidth: 2,
+                                fill: currentChartType === 'area'
+                            }
+                        ]
+                    };
+                    
+                default:
+                    return prepareChartData(); // Fallback till population
+            }
+        }
+
+        function getChartConfig(data) {
+            const baseConfig = {
+                type: currentChartType,
+                data: data,
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    interaction: {
+                        intersect: false,
+                        mode: 'index'
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: currentVisualization === 'growth',
+                            grid: { color: 'rgba(0,0,0,0.1)' },
+                            ticks: {
+                                callback: function(value) {
+                                    if (currentVisualization === 'growth') {
+                                        return value.toFixed(2) + '%';
+                                    }
+                                    return value.toLocaleString('sv-SE');
+                                }
+                            }
+                        },
+                        x: { 
+                            grid: { color: 'rgba(0,0,0,0.1)' }
+                        }
+                    },
+                    plugins: {
+                        legend: { 
+                            display: data.datasets.length > 1,
+                            position: 'top'
+                        },
+                        tooltip: {
+                            backgroundColor: 'rgba(0,0,0,0.8)',
+                            titleColor: '#fff',
+                            bodyColor: '#fff',
+                            borderColor: getVisualizationColor(),
+                            borderWidth: 1,
+                            callbacks: {
+                                label: function(context) {
+                                    if (currentVisualization === 'growth') {
+                                        return context.dataset.label + ': ' + context.parsed.y.toFixed(2) + '%';
+                                    }
+                                    return context.dataset.label + ': ' + context.parsed.y.toLocaleString('sv-SE');
+                                }
+                            }
+                        }
+                    }
+                }
+            };
+
+            return baseConfig;
+        }
+
+        function getVisualizationColor(isBackground = false) {
+            const colors = {
+                population: isBackground ? 'rgba(102, 126, 234, 0.2)' : '#667eea',
+                growth: isBackground ? 'rgba(255, 99, 132, 0.2)' : '#ff6384',
+                projection: isBackground ? 'rgba(54, 162, 235, 0.2)' : '#36a2eb',
+                trend: isBackground ? 'rgba(75, 192, 192, 0.2)' : '#4bc0c0',
+                age: isBackground ? 'rgba(153, 102, 255, 0.2)' : '#9966ff'
+            };
+            
+            return colors[currentVisualization] || colors.population;
+        }
+
+        function calculateGrowthRates() {
+            const years = Object.keys(currentData.population).sort();
+            const rates = [];
+            const validYears = [];
+            
+            for (let i = 1; i < years.length; i++) {
+                const currentYear = years[i];
+                const previousYear = years[i - 1];
+                const current = currentData.population[currentYear];
+                const previous = currentData.population[previousYear];
+                
+                const growthRate = ((current - previous) / previous) * 100;
+                rates.push(growthRate);
+                validYears.push(currentYear);
+            }
+            
+            return { years: validYears, rates: rates };
+        }
+
+        function generateProjection() {
+            const years = Object.keys(currentData.population).sort();
+            const currentYear = new Date().getFullYear();
+            
+            // Historisk data
+            const historical = years.map(year => currentData.population[year]);
+            
+            // Projektion för 3 år framåt
+            const futureYears = [];
+            const projected = [...historical];
+            
+            for (let i = 1; i <= 3; i++) {
+                futureYears.push((currentYear + i).toString());
+            }
+            
+            // Enkel linjär projektion baserad på senaste trenden
+            const recentGrowth = calculateAverageGrowth(years.slice(-3));
+            const lastPopulation = historical[historical.length - 1];
+            
+            for (let i = 0; i < futureYears.length; i++) {
+                const projectedValue = lastPopulation + (recentGrowth * (i + 1));
+                projected.push(projectedValue);
+            }
+            
+            // Pad historical data för alignment
+            const historicalPadded = [...historical];
+            for (let i = 0; i < futureYears.length; i++) {
+                historicalPadded.push(null);
+            }
+            
+            // Pad projected data
+            const projectedPadded = [];
+            for (let i = 0; i < historical.length - 1; i++) {
+                projectedPadded.push(null);
+            }
+            projectedPadded.push(historical[historical.length - 1]);
+            for (let i = historical.length; i < projected.length; i++) {
+                projectedPadded.push(projected[i]);
+            }
+            
+            return {
+                years: [...years, ...futureYears],
+                historical: historicalPadded,
+                projected: projectedPadded
+            };
+        }
+
+        function calculateAverageGrowth(recentYears) {
+            let totalGrowth = 0;
+            let count = 0;
+            
+            for (let i = 1; i < recentYears.length; i++) {
+                const current = currentData.population[recentYears[i]];
+                const previous = currentData.population[recentYears[i - 1]];
+                totalGrowth += (current - previous);
+                count++;
+            }
+            
+            return count > 0 ? totalGrowth / count : -30; // Default till lätt minskning
+        }
+
+        function calculateTrends() {
+            const years = Object.keys(currentData.population).sort();
+            const actual = years.map(year => currentData.population[year]);
+            
+            // Beräkna enkel linjär trend
+            const n = years.length;
+            const sumX = years.reduce((sum, year, index) => sum + index, 0);
+            const sumY = actual.reduce((sum, pop) => sum + pop, 0);
+            const sumXY = actual.reduce((sum, pop, index) => sum + (index * pop), 0);
+            const sumXX = years.reduce((sum, year, index) => sum + (index * index), 0);
+            
+            const slope = (n * sumXY - sumX * sumY) / (n * sumXX - sumX * sumX);
+            const intercept = (sumY - slope * sumX) / n;
+            
+            const trend = years.map((year, index) => slope * index + intercept);
+            
+            return { years: years, actual: actual, trend: trend };
+        }
+
+        // Uppdatera befintliga funktioner
+        function createPopulationChart() {
+            // Denna funktion ersätts nu av createMainChart
+            createMainChart();
+        }
+
+        // Uppdatera displayCurrentData för att använda nya chart-funktioner
+        const originalDisplayCurrentData = displayCurrentData;
+        displayCurrentData = function() {
+            updateStatsCards();
+            createMainChart();
+            createAgeChart();
+        };
+        
     </script>
 </body>
 </html>
