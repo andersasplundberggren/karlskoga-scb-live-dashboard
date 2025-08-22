@@ -1,69 +1,1007 @@
-// Live SCB Dashboard - Konfiguration
-const CONFIG = {
-    // SUPABASE UPPGIFTER - Uppdatera med dina riktiga värden!
-    SUPABASE_URL: 'https://tuzyfjnuksnfoqmqkshn.supabase.co',
-    SUPABASE_ANON_KEY: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InR1enlmam51a3NuZm9xbXFrc2huIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTU4NjAzMjYsImV4cCI6MjA3MTQzNjMyNn0.qNBqJkgiCbpeHho3y0YsgVrvqZ9DC2kdM_y0Xnx0asM',
-    EDGE_FUNCTION_URL: 'https://tuzyfjnuksnfoqmqkshn.supabase.co/functions/v1/scb-data-fetcher',
-    
-    // APP-INSTÄLLNINGAR
-    DEBUG: true,
-    CACHE_INFO: true,
-    VERSION: '2.0.0',
-    APP_NAME: 'Karlskoga Live Dashboard'
-};
+<!DOCTYPE html>
+<html lang="sv">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Karlskoga Befolkningsstatistik</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Segoe UI', sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 20px;
+            padding: 30px;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+        }
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+            padding-bottom: 20px;
+            border-bottom: 2px solid #e0e0e0;
+        }
+        .header h1 {
+            color: #333;
+            font-size: 2.2em;
+            margin-bottom: 10px;
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        .controls {
+            display: flex;
+            justify-content: center;
+            gap: 20px;
+            margin-bottom: 30px;
+            flex-wrap: wrap;
+        }
+        .control-group {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 8px;
+        }
+        select, button {
+            padding: 10px 16px;
+            border: 2px solid #ddd;
+            border-radius: 8px;
+            font-size: 14px;
+            background: white;
+            transition: all 0.3s ease;
+        }
+        button {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+            border: none;
+            cursor: pointer;
+            font-weight: 600;
+        }
+        button:hover { transform: translateY(-2px); }
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+            gap: 15px;
+            margin-bottom: 30px;
+        }
+        .stat-card {
+            background: white;
+            padding: 15px;
+            border-radius: 10px;
+            text-align: center;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+            transition: transform 0.3s ease;
+        }
+        .stat-card:hover { transform: translateY(-3px); }
+        .stat-card h3 {
+            color: #667eea;
+            font-size: 0.9em;
+            margin-bottom: 8px;
+        }
+        .stat-card .value {
+            font-size: 1.6em;
+            font-weight: bold;
+            color: #333;
+            margin-bottom: 5px;
+        }
+        .stat-card .change {
+            font-size: 0.8em;
+            color: #666;
+        }
+        .chart-container {
+            background: white;
+            padding: 20px;
+            border-radius: 15px;
+            margin-bottom: 20px;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+            height: 400px;
+        }
+        .chart-title {
+            font-size: 1.2em;
+            color: #333;
+            margin-bottom: 15px;
+            text-align: center;
+            font-weight: 600;
+        }
+        .chart-wrapper {
+            position: relative;
+            height: 320px;
+        }
+        @media (max-width: 768px) {
+            .container { padding: 15px; }
+            .stats-grid { grid-template-columns: 1fr 1fr; }
+            .chart-container { height: 300px; }
+            .chart-wrapper { height: 220px; }
+        }
+    </style>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.9.1/chart.min.js"></script>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>📊 Karlskoga Befolkningsstatistik</h1>
+            <p>Simulerad SCB-data för demografisk analys</p>
+        </div>
 
-// Debug-funktion
-function debugLog(message, data = null) {
-    if (CONFIG.DEBUG) {
-        const timestamp = new Date().toLocaleTimeString('sv-SE');
-        console.log(`🔍 [${timestamp}] ${message}`, data || '');
-    }
-}
+        <div class="controls">
+            <div class="control-group">
+                <label>Datatyp:</label>
+                <select id="dataSelect" onchange="updateVisualization()">
+                    <option value="population">Befolkningsmängd</option>
+                    <option value="migration">In- och utflyttning</option>
+                    <option value="births_deaths">Födda och döda</option>
+                    <option value="age_groups">Åldersfördelning (10-år)</option>
+                    <option value="prognosis">SCB Prognos till 2070</option>
+                    <option value="net_change">Nettoförändringar</option>
+                </select>
+            </div>
+            <div class="control-group">
+                <label>Diagramtyp:</label>
+                <select id="chartType" onchange="updateVisualization()">
+                    <option value="line">Linje</option>
+                    <option value="bar">Stapel</option>
+                </select>
+            </div>
+            <div class="control-group">
+                <label>&nbsp;</label>
+                <button onclick="generateNewData()">Ny simulering</button>
+            </div>
+        </div>
 
-// Validera konfiguration
-function validateConfig() {
-    const errors = [];
-    
-    if (CONFIG.SUPABASE_URL.includes('ERSÄTT_MED')) {
-        errors.push('⚠️ SUPABASE_URL behöver uppdateras med din riktiga Project URL');
-    }
-    
-    if (CONFIG.SUPABASE_ANON_KEY.includes('ERSÄTT_MED')) {
-        errors.push('⚠️ SUPABASE_ANON_KEY behöver uppdateras med din riktiga anon key');
-    }
-    
-    if (CONFIG.EDGE_FUNCTION_URL.includes('ERSÄTT_MED')) {
-        errors.push('⚠️ EDGE_FUNCTION_URL behöver uppdateras med din riktiga Function URL');
-    }
-    
-    if (errors.length > 0) {
-        console.warn('❌ Konfigurationsfel funna:');
-        errors.forEach(error => console.warn(error));
-        console.warn('💡 Uppdatera js/config.js med dina riktiga Supabase-uppgifter från anteckningsappen');
-        return false;
-    } else {
-        debugLog('✅ Konfiguration validerad framgångsrikt');
-        return true;
-    }
-}
+        <div class="stats-grid" id="statsContainer">
+            <!-- Statistikkort genereras här -->
+        </div>
 
-// Test av nätverksanslutning
-async function testNetworkConnection() {
-    try {
-        const response = await fetch(CONFIG.EDGE_FUNCTION_URL);
-        return response.ok;
-    } catch {
-        return false;
-    }
-}
+        <div class="chart-container">
+            <div class="chart-title" id="chartTitle">Befolkningsmängd över tid</div>
+            <div class="chart-wrapper">
+                <canvas id="mainChart"></canvas>
+            </div>
+        </div>
 
-// Initiera konfiguration
-document.addEventListener('DOMContentLoaded', function() {
-    debugLog('🚀 Live SCB Dashboard konfiguration laddad', {
-        version: CONFIG.VERSION,
-        debug: CONFIG.DEBUG,
-        app: CONFIG.APP_NAME
-    });
-    
-    validateConfig();
-});
+        <div class="chart-container">
+            <div class="chart-title">Åldersfördelning (senaste året)</div>
+            <div class="chart-wrapper">
+                <canvas id="ageChart"></canvas>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Supabase konfiguration
+        const CONFIG = {
+            SUPABASE_URL: 'https://tuzyfjnuksnfoqmqkshn.supabase.co',
+            SUPABASE_ANON_KEY: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InR1enlmam51a3NuZm9xbXFrc2huIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTU4NjAzMjYsImV4cCI6MjA3MTQzNjMyNn0.qNBqJkgiCbpeHho3y0YsgVrvqZ9DC2kdM_y0Xnx0asM',
+            EDGE_FUNCTION_URL: 'https://tuzyfjnuksnfoqmqkshn.supabase.co/functions/v1/scb-data-fetcher',
+            DEBUG: true
+        };
+
+        // SCB API klient
+        const scbApi = {
+            isConfigValid() {
+                return CONFIG.SUPABASE_URL && CONFIG.SUPABASE_ANON_KEY && CONFIG.EDGE_FUNCTION_URL;
+            },
+
+            async testConnection() {
+                try {
+                    const response = await fetch(CONFIG.EDGE_FUNCTION_URL + '/health', {
+                        method: 'GET',
+                        headers: {
+                            'Authorization': `Bearer ${CONFIG.SUPABASE_ANON_KEY}`,
+                            'Content-Type': 'application/json'
+                        }
+                    });
+                    
+                    if (response.ok) {
+                        return { success: true, message: 'Anslutning till SCB Edge Function OK' };
+                    } else {
+                        return { success: false, message: `HTTP ${response.status}` };
+                    }
+                } catch (error) {
+                    return { success: false, message: 'Anslutningsfel: ' + error.message };
+                }
+            },
+
+            async getPopulationData() {
+                try {
+                    const response = await fetch(CONFIG.EDGE_FUNCTION_URL, {
+                        method: 'POST',
+                        headers: {
+                            'Authorization': `Bearer ${CONFIG.SUPABASE_ANON_KEY}`,
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({
+                            municipality: 'Karlskoga',
+                            municipalityCode: '1883',
+                            dataTypes: ['population', 'migration', 'births', 'deaths', 'age_groups'],
+                            years: Array.from({length: 16}, (_, i) => 2010 + i), // 2010-2025
+                            includeProjection: true
+                        })
+                    });
+
+                    if (!response.ok) {
+                        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                    }
+
+                    const result = await response.json();
+                    
+                    if (CONFIG.DEBUG) {
+                        console.log('📊 SCB API Response:', result);
+                    }
+
+                    return {
+                        success: true,
+                        data: result.data || result,
+                        dataSource: result.dataSource || 'scb_live',
+                        message: result.message || 'Data hämtad från SCB via Supabase',
+                        cached: result.cached || false,
+                        timestamp: result.timestamp || new Date().toISOString()
+                    };
+
+                } catch (error) {
+                    console.error('❌ SCB API Error:', error);
+                    return {
+                        success: false,
+                        error: error.message,
+                        message: 'Fel vid hämtning från SCB API: ' + error.message
+                    };
+                }
+            }
+        };
+
+        // Global data - nu med struktur som matchar SCB API
+        let data = {};
+        let mainChart = null;
+        let ageChart = null;
+        let isLiveData = false;
+
+        // Fallback simulerad data om API misslyckas
+        function generateFallbackData() {
+            console.log('🔄 Genererar fallback-data...');
+            const years = [];
+            const population = {};
+            const immigration = {};
+            const emigration = {};
+            const births = {};
+            const deaths = {};
+            const ageGroups = {};
+            const prognosis = {};
+            
+            let currentPop = 29800;
+            
+            for (let year = 2010; year <= 2025; year++) {
+                const y = year.toString();
+                years.push(y);
+                
+                const imm = 280 + Math.floor(Math.random() * 40 - 20);
+                const em = 320 + Math.floor(Math.random() * 40 - 20);
+                const b = 240 + Math.floor(Math.random() * 30 - 15);
+                const d = 380 + Math.floor(Math.random() * 30 - 15);
+                
+                currentPop += (imm - em + b - d) + Math.floor(Math.random() * 20 - 10);
+                currentPop = Math.max(currentPop, 28000);
+                
+                population[y] = currentPop;
+                immigration[y] = imm;
+                emigration[y] = em;
+                births[y] = b;
+                deaths[y] = d;
+                
+                ageGroups[y] = {
+                    '0-9': Math.round(currentPop * 0.09),
+                    '10-19': Math.round(currentPop * 0.11),
+                    '20-29': Math.round(currentPop * 0.12),
+                    '30-39': Math.round(currentPop * 0.13),
+                    '40-49': Math.round(currentPop * 0.14),
+                    '50-59': Math.round(currentPop * 0.15),
+                    '60-69': Math.round(currentPop * 0.13),
+                    '70-79': Math.round(currentPop * 0.09),
+                    '80+': Math.round(currentPop * 0.04)
+                };
+            }
+            
+            let progPop = currentPop;
+            for (let year = 2030; year <= 2070; year += 5) {
+                progPop *= 0.985;
+                prognosis[year.toString()] = Math.round(progPop);
+            }
+            
+            return {
+                years,
+                population,
+                immigration,
+                emigration,
+                births,
+                deaths,
+                ageGroups,
+                prognosis,
+                metadata: {
+                    source: 'Fallback simulerad data',
+                    municipality: 'Karlskoga',
+                    lastUpdated: new Date().toISOString()
+                }
+            };
+        }
+
+        // Hämta live data från SCB
+        async function fetchLiveData() {
+            updateStatus('Hämtar live data från SCB via Supabase...', 'info');
+            
+            try {
+                const result = await scbApi.getPopulationData();
+                
+                if (result.success && result.data) {
+                    console.log('✅ Live data hämtad:', result);
+                    isLiveData = !result.cached;
+                    
+                    // Konvertera SCB-data till vårt format
+                    const scbData = result.data;
+                    
+                    data = {
+                        years: scbData.years || Object.keys(scbData.population || {}),
+                        population: scbData.population || {},
+                        immigration: scbData.immigration || {},
+                        emigration: scbData.emigration || {},
+                        births: scbData.births || {},
+                        deaths: scbData.deaths || {},
+                        ageGroups: scbData.ageGroups || {},
+                        prognosis: scbData.projection || scbData.prognosis || {},
+                        metadata: {
+                            source: result.dataSource,
+                            cached: result.cached,
+                            timestamp: result.timestamp,
+                            municipality: 'Karlskoga'
+                        }
+                    };
+                    
+                    updateStatus(
+                        `✅ ${result.message} ${result.cached ? '(cached)' : '(live)'}`, 
+                        'success'
+                    );
+                    
+                    return true;
+                } else {
+                    throw new Error(result.message || 'Ingen data mottagen');
+                }
+                
+            } catch (error) {
+                console.error('❌ Live data misslyckades:', error);
+                updateStatus(`❌ Live data misslyckades: ${error.message}`, 'error');
+                return false;
+            }
+        }
+
+        // Status-meddelanden
+        function updateStatus(message, type = 'info') {
+            const statusContainer = document.querySelector('.header p');
+            const colors = {
+                info: '#2c5282',
+                success: '#2e8b57', 
+                error: '#dc143c',
+                warning: '#856404'
+            };
+            
+            if (statusContainer) {
+                statusContainer.textContent = message;
+                statusContainer.style.color = colors[type] || colors.info;
+            }
+            
+            if (CONFIG.DEBUG) {
+                console.log(`📢 Status (${type}): ${message}`);
+            }
+        }
+
+        // Uppdatera statistikkort
+        function updateStats() {
+            const container = document.getElementById('statsContainer');
+            const latestYear = data.years ? data.years[data.years.length - 1] : '2025';
+            const pop = data.population ? data.population[latestYear] || 0 : 0;
+            const imm = data.immigration ? data.immigration[latestYear] || 0 : 0;
+            const em = data.emigration ? data.emigration[latestYear] || 0 : 0;
+            const births = data.births ? data.births[latestYear] || 0 : 0;
+            const deaths = data.deaths ? data.deaths[latestYear] || 0 : 0;
+            const netMig = imm - em;
+            const natChange = births - deaths;
+            const liveIndicator = isLiveData ? ' 🔴 LIVE' : '';
+            
+            container.innerHTML = `
+                <div class="stat-card">
+                    <h3>Befolkning ${latestYear}${liveIndicator}</h3>
+                    <div class="value">${pop.toLocaleString()}</div>
+                    <div class="change">${data.metadata?.source || 'SCB'}</div>
+                </div>
+                <div class="stat-card">
+                    <h3>Inflyttade</h3>
+                    <div class="value">${imm}</div>
+                    <div class="change">${latestYear}</div>
+                </div>
+                <div class="stat-card">
+                    <h3>Utflyttade</h3>
+                    <div class="value">${em}</div>
+                    <div class="change">${latestYear}</div>
+                </div>
+                <div class="stat-card">
+                    <h3>Nettomigration</h3>
+                    <div class="value">${netMig > 0 ? '+' : ''}${netMig}</div>
+                    <div class="change">${latestYear}</div>
+                </div>
+                <div class="stat-card">
+                    <h3>Födda</h3>
+                    <div class="value">${births}</div>
+                    <div class="change">${latestYear}</div>
+                </div>
+                <div class="stat-card">
+                    <h3>Döda</h3>
+                    <div class="value">${deaths}</div>
+                    <div class="change">${latestYear}</div>
+                </div>
+                <div class="stat-card">
+                    <h3>Naturlig förändring</h3>
+                    <div class="value">${natChange > 0 ? '+' : ''}${natChange}</div>
+                    <div class="change">${latestYear}</div>
+                </div>
+                <div class="stat-card">
+                    <h3>Prognos 2070</h3>
+                    <div class="value">${Math.round(data.prognosis?.['2070'] || 0).toLocaleString()}</div>
+                    <div class="change">SCB</div>
+                </div>
+            `;
+        }
+            const years = [];
+            const population = {};
+            const immigration = {};
+            const emigration = {};
+            const births = {};
+            const deaths = {};
+            const ageGroups = {};
+            const prognosis = {};
+            
+            let currentPop = 29800;
+            
+            // Historisk data 2010-2025
+            for (let year = 2010; year <= 2025; year++) {
+                const y = year.toString();
+                years.push(y);
+                
+                const imm = 280 + Math.floor(Math.random() * 40 - 20);
+                const em = 320 + Math.floor(Math.random() * 40 - 20);
+                const b = 240 + Math.floor(Math.random() * 30 - 15);
+                const d = 380 + Math.floor(Math.random() * 30 - 15);
+                
+                currentPop += (imm - em + b - d) + Math.floor(Math.random() * 20 - 10);
+                currentPop = Math.max(currentPop, 28000);
+                
+                population[y] = currentPop;
+                immigration[y] = imm;
+                emigration[y] = em;
+                births[y] = b;
+                deaths[y] = d;
+                
+                // Åldersgrupper
+                ageGroups[y] = {
+                    '0-9': Math.round(currentPop * 0.09),
+                    '10-19': Math.round(currentPop * 0.11),
+                    '20-29': Math.round(currentPop * 0.12),
+                    '30-39': Math.round(currentPop * 0.13),
+                    '40-49': Math.round(currentPop * 0.14),
+                    '50-59': Math.round(currentPop * 0.15),
+                    '60-69': Math.round(currentPop * 0.13),
+                    '70-79': Math.round(currentPop * 0.09),
+                    '80+': Math.round(currentPop * 0.04)
+                };
+            }
+            
+            // Prognos 2026-2070 (var 5:e år)
+            let progPop = currentPop;
+            for (let year = 2030; year <= 2070; year += 5) {
+                progPop *= 0.985; // 1.5% minskning per 5 år
+                prognosis[year.toString()] = Math.round(progPop);
+            }
+            
+            return {
+                years,
+                population,
+                immigration,
+                emigration,
+                births,
+                deaths,
+                ageGroups,
+                prognosis
+            };
+        }
+
+        // Uppdatera statistikkort
+        function updateStats() {
+            const container = document.getElementById('statsContainer');
+            const latestYear = data.years[data.years.length - 1];
+            const pop = data.population[latestYear];
+            const imm = data.immigration[latestYear];
+            const em = data.emigration[latestYear];
+            const births = data.births[latestYear];
+            const deaths = data.deaths[latestYear];
+            const netMig = imm - em;
+            const natChange = births - deaths;
+            
+            container.innerHTML = `
+                <div class="stat-card">
+                    <h3>Befolkning ${latestYear}</h3>
+                    <div class="value">${pop.toLocaleString()}</div>
+                    <div class="change">Total</div>
+                </div>
+                <div class="stat-card">
+                    <h3>Inflyttade</h3>
+                    <div class="value">${imm}</div>
+                    <div class="change">${latestYear}</div>
+                </div>
+                <div class="stat-card">
+                    <h3>Utflyttade</h3>
+                    <div class="value">${em}</div>
+                    <div class="change">${latestYear}</div>
+                </div>
+                <div class="stat-card">
+                    <h3>Nettomigration</h3>
+                    <div class="value">${netMig > 0 ? '+' : ''}${netMig}</div>
+                    <div class="change">${latestYear}</div>
+                </div>
+                <div class="stat-card">
+                    <h3>Födda</h3>
+                    <div class="value">${births}</div>
+                    <div class="change">${latestYear}</div>
+                </div>
+                <div class="stat-card">
+                    <h3>Döda</h3>
+                    <div class="value">${deaths}</div>
+                    <div class="change">${latestYear}</div>
+                </div>
+                <div class="stat-card">
+                    <h3>Naturlig förändring</h3>
+                    <div class="value">${natChange > 0 ? '+' : ''}${natChange}</div>
+                    <div class="change">${latestYear}</div>
+                </div>
+                <div class="stat-card">
+                    <h3>Prognos 2070</h3>
+                    <div class="value">${Math.round(data.prognosis['2070'] || 0).toLocaleString()}</div>
+                    <div class="change">SCB</div>
+                </div>
+            `;
+        }
+
+        // Förbered data för diagram (samma som innan men säkrare)
+        function prepareChartData() {
+            const selection = document.getElementById('dataSelect').value;
+            const years = data.years || [];
+            
+            switch(selection) {
+                case 'population':
+                    return {
+                        labels: years,
+                        datasets: [{
+                            label: 'Befolkning',
+                            data: years.map(y => data.population?.[y] || 0),
+                            borderColor: isLiveData ? '#00ff00' : '#667eea',
+                            backgroundColor: isLiveData ? 'rgba(0, 255, 0, 0.1)' : 'rgba(102, 126, 234, 0.1)',
+                            borderWidth: isLiveData ? 3 : 2,
+                            tension: 0.4
+                        }]
+                    };
+                    
+                case 'migration':
+                    return {
+                        labels: years,
+                        datasets: [
+                            {
+                                label: 'Inflyttade',
+                                data: years.map(y => data.immigration?.[y] || 0),
+                                borderColor: '#28a745',
+                                backgroundColor: 'rgba(40, 167, 69, 0.1)',
+                                borderWidth: 2
+                            },
+                            {
+                                label: 'Utflyttade', 
+                                data: years.map(y => data.emigration?.[y] || 0),
+                                borderColor: '#dc3545',
+                                backgroundColor: 'rgba(220, 53, 69, 0.1)',
+                                borderWidth: 2
+                            }
+                        ]
+                    };
+                    
+                case 'births_deaths':
+                    return {
+                        labels: years,
+                        datasets: [
+                            {
+                                label: 'Födda',
+                                data: years.map(y => data.births?.[y] || 0),
+                                borderColor: '#007bff',
+                                backgroundColor: 'rgba(0, 123, 255, 0.1)',
+                                borderWidth: 2
+                            },
+                            {
+                                label: 'Döda',
+                                data: years.map(y => data.deaths?.[y] || 0),
+                                borderColor: '#6c757d',
+                                backgroundColor: 'rgba(108, 117, 125, 0.1)',
+                                borderWidth: 2
+                            }
+                        ]
+                    };
+                    
+                case 'age_groups':
+                    const latestYear = years[years.length - 1] || '2025';
+                    const ages = data.ageGroups?.[latestYear] || {};
+                    return {
+                        labels: Object.keys(ages).map(k => k + ' år'),
+                        datasets: [{
+                            data: Object.values(ages),
+                            backgroundColor: [
+                                '#FF6384', '#36A2EB', '#FFCE56', '#4BC0C0', '#9966FF',
+                                '#FF9F40', '#C9CBCF', '#4BC0C0', '#FF6384'
+                            ]
+                        }]
+                    };
+                    
+                case 'prognosis':
+                    const histYears = years;
+                    const progYears = Object.keys(data.prognosis || {});
+                    const allYears = [...histYears, ...progYears];
+                    
+                    return {
+                        labels: allYears,
+                        datasets: [
+                            {
+                                label: 'Historisk',
+                                data: allYears.map(y => histYears.includes(y) ? data.population?.[y] || null : null),
+                                borderColor: isLiveData ? '#00ff00' : '#667eea',
+                                backgroundColor: isLiveData ? 'rgba(0, 255, 0, 0.1)' : 'rgba(102, 126, 234, 0.1)',
+                                borderWidth: 2,
+                                spanGaps: false
+                            },
+                            {
+                                label: 'Prognos',
+                                data: allYears.map(y => {
+                                    if (progYears.includes(y)) return data.prognosis[y];
+                                    if (y === years[years.length - 1]) return data.population?.[y];
+                                    return null;
+                                }),
+                                borderColor: '#ff9800',
+                                backgroundColor: 'rgba(255, 152, 0, 0.1)',
+                                borderWidth: 2,
+                                borderDash: [5, 5],
+                                spanGaps: true
+                            }
+                        ]
+                    };
+                    
+                case 'net_change':
+                    return {
+                        labels: years,
+                        datasets: [
+                            {
+                                label: 'Nettomigration',
+                                data: years.map(y => (data.immigration?.[y] || 0) - (data.emigration?.[y] || 0)),
+                                borderColor: '#17a2b8',
+                                backgroundColor: 'rgba(23, 162, 184, 0.1)',
+                                borderWidth: 2
+                            },
+                            {
+                                label: 'Naturlig förändring',
+                                data: years.map(y => (data.births?.[y] || 0) - (data.deaths?.[y] || 0)),
+                                borderColor: '#28a745',
+                                backgroundColor: 'rgba(40, 167, 69, 0.1)',
+                                borderWidth: 2
+                            }
+                        ]
+                    };
+                
+                default:
+                    return { labels: [], datasets: [] };
+            }
+        }
+
+        // Skapa huvuddiagram (uppdaterad för live data)
+        function createMainChart() {
+            const ctx = document.getElementById('mainChart').getContext('2d');
+            const chartData = prepareChartData();
+            const chartType = document.getElementById('chartType').value;
+            const isAge = document.getElementById('dataSelect').value === 'age_groups';
+            
+            if (mainChart) mainChart.destroy();
+            
+            mainChart = new Chart(ctx, {
+                type: isAge ? 'doughnut' : chartType,
+                data: chartData,
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: isAge ? {} : {
+                        y: {
+                            beginAtZero: true,
+                            ticks: {
+                                callback: value => value.toLocaleString()
+                            }
+                        }
+                    },
+                    plugins: {
+                        legend: {
+                            display: chartData.datasets.length > 1 || isAge,
+                            position: isAge ? 'bottom' : 'top'
+                        },
+                        tooltip: {
+                            backgroundColor: 'rgba(0,0,0,0.8)',
+                            titleColor: '#fff',
+                            bodyColor: '#fff',
+                            callbacks: {
+                                label: function(context) {
+                                    if (isAge) {
+                                        const total = context.dataset.data.reduce((a, b) => a + b, 0);
+                                        const percentage = total > 0 ? ((context.parsed / total) * 100).toFixed(1) : '0';
+                                        return context.label + ': ' + context.parsed.toLocaleString() + ' (' + percentage + '%)';
+                                    }
+                                    return context.dataset.label + ': ' + (context.parsed.y || context.parsed).toLocaleString();
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        // Skapa åldersdiagram (uppdaterat för live data)
+        function createAgeChart() {
+            const ctx = document.getElementById('ageChart').getContext('2d');
+            const years = data.years || [];
+            const latestYear = years[years.length - 1] || '2025';
+            const ages = data.ageGroups?.[latestYear] || {};
+            
+            if (ageChart) ageChart.destroy();
+            
+            const colors = isLiveData ? 
+                ['#00ff00', '#00cc00', '#009900', '#00bb00', '#00dd00', '#22ff22', '#44ff44', '#66ff66', '#88ff88'] :
+                ['#FF6384', '#36A2EB', '#FFCE56', '#4BC0C0', '#9966FF', '#FF9F40', '#C9CBCF', '#4BC0C0', '#FF6384'];
+            
+            ageChart = new Chart(ctx, {
+                type: 'doughnut',
+                data: {
+                    labels: Object.keys(ages).map(k => k + ' år'),
+                    datasets: [{
+                        data: Object.values(ages),
+                        backgroundColor: colors
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            position: 'bottom',
+                            labels: { font: { size: 11 } }
+                        },
+                        tooltip: {
+                            backgroundColor: 'rgba(0,0,0,0.8)',
+                            titleColor: '#fff',
+                            bodyColor: '#fff',
+                            callbacks: {
+                                label: function(context) {
+                                    const total = context.dataset.data.reduce((a, b) => a + b, 0);
+                                    const percentage = total > 0 ? ((context.parsed / total) * 100).toFixed(1) : '0';
+                                    return context.label + ': ' + context.parsed.toLocaleString() + ' (' + percentage + '%)';
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        // Uppdatera titel
+        function updateTitle() {
+            const titles = {
+                population: 'Befolkningsmängd över tid',
+                migration: 'In- och utflyttning per år',
+                births_deaths: 'Födda och döda per år',
+                age_groups: 'Åldersfördelning per 10-årsgrupper',
+                prognosis: 'SCB:s befolkningsprognos till 2070',
+                net_change: 'Nettoförändringar per år'
+            };
+            
+            const selection = document.getElementById('dataSelect').value;
+            const title = titles[selection] + (isLiveData ? ' (LIVE SCB-data)' : '');
+            document.getElementById('chartTitle').textContent = title;
+        }
+
+        // Event handlers
+        function updateVisualization() {
+            updateTitle();
+            createMainChart();
+        }
+
+        // Hämta ny live data (ersätter generateNewData)
+        async function generateNewData() {
+            const button = document.querySelector('button[onclick="generateNewData()"]');
+            const originalText = button.textContent;
+            
+            button.disabled = true;
+            button.textContent = 'Hämtar live data...';
+            
+            const success = await fetchLiveData();
+            
+            if (success) {
+                updateStats();
+                updateVisualization();
+                createAgeChart();
+                button.textContent = 'Live data hämtad ✅';
+            } else {
+                // Fallback till simulerad data
+                updateStatus('Använder simulerad data som fallback', 'warning');
+                data = generateFallbackData();
+                isLiveData = false;
+                updateStats();
+                updateVisualization();
+                createAgeChart();
+                button.textContent = 'Fallback data laddad ⚠️';
+            }
+            
+            setTimeout(() => {
+                button.textContent = originalText;
+                button.disabled = false;
+            }, 3000);
+        }
+
+        // Test API-anslutning
+        async function testApiConnection() {
+            updateStatus('Testar anslutning till SCB API...', 'info');
+            
+            const result = await scbApi.testConnection();
+            
+            if (result.success) {
+                updateStatus('✅ ' + result.message, 'success');
+            } else {
+                updateStatus('❌ ' + result.message, 'error');
+            }
+        }
+
+        // Initiera applikationen
+        document.addEventListener('DOMContentLoaded', async function() {
+            console.log('🚀 Karlskoga SCB Dashboard startar...');
+            
+            if (!scbApi.isConfigValid()) {
+                updateStatus('❌ Konfigurationsfel - kontrollera Supabase-uppgifter', 'error');
+                data = generateFallbackData();
+                isLiveData = false;
+            } else {
+                // Försök hämta live data först
+                const success = await fetchLiveData();
+                
+                if (!success) {
+                    console.log('⚠️ Live data misslyckades, använder fallback');
+                    data = generateFallbackData();
+                    isLiveData = false;
+                }
+            }
+            
+            // Visa dashboard
+            updateStats();
+            updateVisualization();
+            createAgeChart();
+            
+            console.log('✅ Dashboard initierad:', isLiveData ? 'MED live SCB-data' : 'med simulerad data');
+        });
+    </script>borderColor: '#28a745',
+                                backgroundColor: 'rgba(40, 167, 69, 0.1)',
+                                borderWidth: 2
+                            }
+                        ]
+                    };
+            }
+        }
+
+        // Skapa huvuddiagram
+        function createMainChart() {
+            const ctx = document.getElementById('mainChart').getContext('2d');
+            const chartData = prepareChartData();
+            const chartType = document.getElementById('chartType').value;
+            const isAge = document.getElementById('dataSelect').value === 'age_groups';
+            
+            if (mainChart) mainChart.destroy();
+            
+            mainChart = new Chart(ctx, {
+                type: isAge ? 'doughnut' : chartType,
+                data: chartData,
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: isAge ? {} : {
+                        y: {
+                            beginAtZero: true,
+                            ticks: {
+                                callback: value => value.toLocaleString()
+                            }
+                        }
+                    },
+                    plugins: {
+                        legend: {
+                            display: chartData.datasets.length > 1 || isAge,
+                            position: isAge ? 'bottom' : 'top'
+                        }
+                    }
+                }
+            });
+        }
+
+        // Skapa åldersdiagram
+        function createAgeChart() {
+            const ctx = document.getElementById('ageChart').getContext('2d');
+            const latestYear = data.years[data.years.length - 1];
+            const ages = data.ageGroups[latestYear];
+            
+            if (ageChart) ageChart.destroy();
+            
+            ageChart = new Chart(ctx, {
+                type: 'doughnut',
+                data: {
+                    labels: Object.keys(ages).map(k => k + ' år'),
+                    datasets: [{
+                        data: Object.values(ages),
+                        backgroundColor: [
+                            '#FF6384', '#36A2EB', '#FFCE56', '#4BC0C0', '#9966FF',
+                            '#FF9F40', '#C9CBCF', '#4BC0C0', '#FF6384'
+                        ]
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            position: 'bottom',
+                            labels: { font: { size: 11 } }
+                        }
+                    }
+                }
+            });
+        }
+
+        // Uppdatera titel
+        function updateTitle() {
+            const titles = {
+                population: 'Befolkningsmängd över tid',
+                migration: 'In- och utflyttning per år',
+                births_deaths: 'Födda och döda per år',
+                age_groups: 'Åldersfördelning per 10-årsgrupper',
+                prognosis: 'SCB:s befolkningsprognos till 2070',
+                net_change: 'Nettoförändringar per år'
+            };
+            
+            const selection = document.getElementById('dataSelect').value;
+            document.getElementById('chartTitle').textContent = titles[selection];
+        }
+
+        // Event handlers
+        function updateVisualization() {
+            updateTitle();
+            createMainChart();
+        }
+
+        function generateNewData() {
+            data = generateData();
+            updateStats();
+            updateVisualization();
+            createAgeChart();
+        }
+
+        // Initiera
+        document.addEventListener('DOMContentLoaded', function() {
+            data = generateData();
+            updateStats();
+            updateVisualization();
+            createAgeChart();
+        });
+    </script>
+</body>
+</html>
