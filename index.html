@@ -77,9 +77,8 @@
             border-radius: 10px;
             text-align: center;
             box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
-            transition: transform 0.3s ease;
+            position: relative;
         }
-        .stat-card:hover { transform: translateY(-3px); }
         .stat-card.live::before {
             content: "🔴 LIVE";
             position: absolute;
@@ -134,34 +133,16 @@
             margin: 20px 0;
             border-left: 4px solid #2c5282;
         }
-        .status.success {
-            background: #e8f5e8;
-            color: #2e8b57;
-            border-left-color: #2e8b57;
-        }
-        .status.warning {
-            background: #fff3cd;
-            color: #856404;
-            border-left-color: #ffc107;
-        }
-        .status.error {
-            background: #ffe8e8;
-            color: #dc143c;
-            border-left-color: #dc143c;
-        }
-        @media (max-width: 768px) {
-            .container { padding: 15px; }
-            .stats-grid { grid-template-columns: 1fr 1fr; }
-            .chart-container { height: 300px; }
-            .chart-wrapper { height: 220px; }
-        }
+        .status.success { background: #e8f5e8; color: #2e8b57; border-left-color: #2e8b57; }
+        .status.warning { background: #fff3cd; color: #856404; border-left-color: #ffc107; }
+        .status.error { background: #ffe8e8; color: #dc143c; border-left-color: #dc143c; }
     </style>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.9.1/chart.min.js"></script>
 </head>
 <body>
     <div class="container">
         <div class="header">
-            <h1>📊 Karlskoga Befolkningsstatistik v2</h1>
+            <h1>📊 Karlskoga Befolkningsstatistik</h1>
             <p id="statusText">Laddar SCB-data för Karlskoga kommun...</p>
         </div>
 
@@ -195,7 +176,11 @@
         </div>
 
         <div class="stats-grid" id="statsContainer">
-            <!-- Statistikkort genereras här -->
+            <div class="stat-card">
+                <h3>Laddar...</h3>
+                <div class="value">-</div>
+                <div class="change">Vänta</div>
+            </div>
         </div>
 
         <div class="chart-container">
@@ -214,115 +199,93 @@
     </div>
 
     <script>
-        // Första test - se om script körs överhuvudtaget
-        console.log('🟢 JavaScript har startats!');
-        
+        console.log('🟢 JavaScript startar!');
+
         // Konfiguration
         const CONFIG = {
             SUPABASE_URL: 'https://tuzyfjnuksnfoqmqkshn.supabase.co',
             SUPABASE_ANON_KEY: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InR1enlmam51a3NuZm9xbXFrc2huIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTU4NjAzMjYsImV4cCI6MjA3MTQzNjMyNn0.qNBqJkgiCbpeHho3y0YsgVrvqZ9DC2kdM_y0Xnx0asM',
-            EDGE_FUNCTION_URL: 'https://tuzyfjnuksnfoqmqkshn.supabase.co/functions/v1/scb-data-fetcher',
-            DEBUG: true
+            EDGE_FUNCTION_URL: 'https://tuzyfjnuksnfoqmqkshn.supabase.co/functions/v1/scb-data-fetcher'
         };
-        
-        console.log('🟢 Konfiguration laddad:', CONFIG);
-
-        // Debug-funktion
-        function debugLog(message, data) {
-            const timestamp = new Date().toLocaleTimeString('sv-SE');
-            console.log(`🔍 [${timestamp}] ${message}`, data || '');
-        }
-        
-        console.log('🟢 debugLog-funktion skapad');
-
-        // Enkel SCB API-klass (förenklad för debugging)
-        class LiveSCBApi {
-            constructor() {
-                console.log('🟢 LiveSCBApi constructor körs');
-                this.edgeFunctionUrl = CONFIG.EDGE_FUNCTION_URL;
-                this.supabaseKey = CONFIG.SUPABASE_ANON_KEY;
-                debugLog('🚀 Live SCB API initialiserad');
-            }
-
-            async testConnection() {
-                debugLog('🔍 Testar anslutning...');
-                try {
-                    const response = await fetch(this.edgeFunctionUrl, {
-                        method: 'GET',
-                        headers: {
-                            'Authorization': `Bearer ${this.supabaseKey}`,
-                            'Content-Type': 'application/json'
-                        }
-                    });
-                    
-                    debugLog('📥 Response status:', response.status);
-                    
-                    if (response.ok) {
-                        const data = await response.json();
-                        debugLog('✅ API svar:', data);
-                        return { success: true, message: 'Anslutning OK', data };
-                    } else {
-                        throw new Error(`HTTP ${response.status}`);
-                    }
-                } catch (error) {
-                    debugLog('❌ API-fel:', error.message);
-                    return { success: false, message: error.message };
-                }
-            }
-
-            generateFallbackData() {
-                debugLog('🎲 Genererar fallback-data...');
-                
-                const years = ['2021', '2022', '2023', '2024', '2025'];
-                const populations = [30045, 30189, 30261, 30167, 30120];
-                
-                return {
-                    years,
-                    populations,
-                    ageGroups: {
-                        '0-17': 5060,
-                        '18-64': 17170,
-                        '65+': 7890
-                    }
-                };
-            }
-        }
-        
-        console.log('🟢 LiveSCBApi-klass definierad');
 
         // Global variabler
-        let scbApi;
         let data = {};
         let mainChart = null;
         let ageChart = null;
         let isLiveData = false;
-        
-        console.log('🟢 Globala variabler skapade');
 
         // Status-uppdatering
         function updateStatus(message, type = 'info') {
-            console.log('🟢 updateStatus anropad:', message, type);
-            
             const statusEl = document.getElementById('statusMessage');
             const contentEl = document.getElementById('statusContent');
-            
             if (statusEl && contentEl) {
                 contentEl.textContent = message;
                 statusEl.className = 'status ' + type;
-                debugLog(`📢 Status uppdaterad (${type}): ${message}`);
-            } else {
-                console.log('❌ Status-element inte funna');
+            }
+            console.log(`📢 Status: ${message}`);
+        }
+
+        // SCB API-anrop
+        async function fetchSCBData() {
+            try {
+                console.log('🔍 Hämtar SCB-data...');
+                const response = await fetch(CONFIG.EDGE_FUNCTION_URL, {
+                    method: 'GET',
+                    headers: {
+                        'Authorization': `Bearer ${CONFIG.SUPABASE_ANON_KEY}`,
+                        'Content-Type': 'application/json'
+                    }
+                });
+
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}`);
+                }
+
+                const result = await response.json();
+                console.log('📊 SCB API-resultat:', result);
+
+                if (result.success && result.data) {
+                    return {
+                        success: true,
+                        data: result.data,
+                        cached: result.cached || false,
+                        message: result.message || 'Data hämtad'
+                    };
+                } else {
+                    throw new Error('Ingen data mottagen');
+                }
+            } catch (error) {
+                console.log('❌ SCB API-fel:', error.message);
+                return {
+                    success: false,
+                    error: error.message,
+                    data: generateFallbackData()
+                };
             }
         }
-        
-        console.log('🟢 updateStatus-funktion definierad');
 
-        // Enkel datakonvertering
-        function convertApiData(apiData) {
-            console.log('🟢 convertApiData anropad med:', apiData);
+        // Fallback-data
+        function generateFallbackData() {
+            const years = ['2021', '2022', '2023', '2024', '2025'];
+            const populations = [30045, 30189, 30261, 30167, 30120];
+            
+            return {
+                years,
+                populations,
+                ageGroups: {
+                    '0-17': 5060,
+                    '18-64': 17170,
+                    '65+': 7890
+                }
+            };
+        }
+
+        // Konvertera SCB-data
+        function convertSCBData(scbData) {
+            console.log('🔄 Konverterar SCB-data:', scbData);
             
             const converted = {
-                years: apiData.years || [],
+                years: scbData.years || ['2021', '2022', '2023', '2024', '2025'],
                 population: {},
                 immigration: {},
                 emigration: {},
@@ -331,33 +294,34 @@
                 ageGroups: {},
                 prognosis: {}
             };
-            
-            // Konvertera populations till population-objekt
-            if (apiData.populations && apiData.years) {
-                apiData.years.forEach((year, index) => {
-                    converted.population[year] = apiData.populations[index];
+
+            // Befolkningsdata
+            if (scbData.populations && scbData.years) {
+                scbData.years.forEach((year, index) => {
+                    converted.population[year] = scbData.populations[index];
                 });
             }
-            
+
             // Åldersgrupper
-            if (apiData.ageGroups) {
+            if (scbData.ageGroups) {
                 const latestYear = converted.years[converted.years.length - 1];
-                if (latestYear) {
+                if (scbData.ageGroups['0-17']) {
+                    // Konvertera 3-grupper till 10-årsgrupper
                     converted.ageGroups[latestYear] = {
-                        '0-9': Math.round((apiData.ageGroups['0-17'] || 0) * 0.55),
-                        '10-19': Math.round((apiData.ageGroups['0-17'] || 0) * 0.45),
-                        '20-29': Math.round((apiData.ageGroups['18-64'] || 0) * 0.20),
-                        '30-39': Math.round((apiData.ageGroups['18-64'] || 0) * 0.20),
-                        '40-49': Math.round((apiData.ageGroups['18-64'] || 0) * 0.20),
-                        '50-59': Math.round((apiData.ageGroups['18-64'] || 0) * 0.20),
-                        '60-69': Math.round((apiData.ageGroups['18-64'] || 0) * 0.20),
-                        '70-79': Math.round((apiData.ageGroups['65+'] || 0) * 0.60),
-                        '80+': Math.round((apiData.ageGroups['65+'] || 0) * 0.40)
+                        '0-9': Math.round(scbData.ageGroups['0-17'] * 0.55),
+                        '10-19': Math.round(scbData.ageGroups['0-17'] * 0.45),
+                        '20-29': Math.round(scbData.ageGroups['18-64'] * 0.20),
+                        '30-39': Math.round(scbData.ageGroups['18-64'] * 0.20),
+                        '40-49': Math.round(scbData.ageGroups['18-64'] * 0.20),
+                        '50-59': Math.round(scbData.ageGroups['18-64'] * 0.20),
+                        '60-69': Math.round(scbData.ageGroups['18-64'] * 0.20),
+                        '70-79': Math.round(scbData.ageGroups['65+'] * 0.60),
+                        '80+': Math.round(scbData.ageGroups['65+'] * 0.40)
                     };
                 }
             }
-            
-            // Kompletterande data
+
+            // Generera kompletterande data
             converted.years.forEach(year => {
                 const pop = converted.population[year] || 30000;
                 converted.immigration[year] = 280 + Math.floor(Math.random() * 40 - 20);
@@ -365,32 +329,25 @@
                 converted.births[year] = Math.round(pop * 0.008);
                 converted.deaths[year] = Math.round(pop * 0.012);
             });
-            
-            console.log('🟢 Data konverterad:', converted);
+
+            // Prognos
+            let projPop = converted.population[converted.years[converted.years.length - 1]] || 30000;
+            for (let year = 2030; year <= 2070; year += 5) {
+                projPop *= 0.985;
+                converted.prognosis[year.toString()] = Math.round(projPop);
+            }
+
+            console.log('✅ Data konverterad:', converted);
             return converted;
         }
-        
-        console.log('🟢 convertApiData-funktion definierad');
 
         // Uppdatera statistikkort
         function updateStats() {
-            console.log('🟢 updateStats anropad');
-            
             const container = document.getElementById('statsContainer');
-            if (!container) {
-                console.log('❌ statsContainer inte funnet');
-                return;
-            }
-            
             const years = data.years || [];
             const latestYear = years[years.length - 1];
             
-            console.log('📊 Senaste år:', latestYear, 'Data:', data);
-            
-            if (!latestYear) {
-                container.innerHTML = '<div>Ingen data tillgänglig</div>';
-                return;
-            }
+            if (!latestYear || !container) return;
             
             const pop = data.population[latestYear] || 0;
             const imm = data.immigration[latestYear] || 0;
@@ -400,8 +357,6 @@
             const netMig = imm - em;
             const natChange = births - deaths;
             const liveClass = isLiveData ? 'live' : '';
-            
-            console.log('📊 Statistik:', { pop, imm, em, births, deaths, netMig, natChange });
             
             container.innerHTML = `
                 <div class="stat-card ${liveClass}">
@@ -425,108 +380,102 @@
                     <div class="change">${latestYear}</div>
                 </div>
             `;
-            
-            console.log('✅ Statistikkort uppdaterade');
         }
-        
-        console.log('🟢 updateStats-funktion definierad');
 
-        // Test-funktion för att ladda fallback-data
-        function loadFallbackData() {
-            console.log('🟢 loadFallbackData anropad');
+        // Förbered chart-data
+        function prepareChartData() {
+            const selection = document.getElementById('dataSelect').value;
+            const years = data.years || [];
             
-            if (!scbApi) {
-                console.log('❌ scbApi inte tillgänglig');
-                return false;
-            }
-            
-            const fallbackData = scbApi.generateFallbackData();
-            data = convertApiData(fallbackData);
-            isLiveData = false;
-            
-            console.log('🟢 Fallback-data laddad:', data);
-            return true;
-        }
-        
-        console.log('🟢 loadFallbackData-funktion definierad');
-
-        // Huvudinitiering - mycket förenklad för debugging
-        document.addEventListener('DOMContentLoaded', function() {
-            console.log('🟢 DOMContentLoaded event triggrad!');
-            
-            try {
-                // Skapa API-instans
-                scbApi = new LiveSCBApi();
-                console.log('✅ API-instans skapad');
+            switch(selection) {
+                case 'population':
+                    return {
+                        labels: years,
+                        datasets: [{
+                            label: 'Befolkning',
+                            data: years.map(y => data.population[y] || 0),
+                            borderColor: isLiveData ? '#00ff00' : '#667eea',
+                            backgroundColor: isLiveData ? 'rgba(0, 255, 0, 0.1)' : 'rgba(102, 126, 234, 0.1)',
+                            borderWidth: isLiveData ? 3 : 2,
+                            tension: 0.4,
+                            fill: false
+                        }]
+                    };
                 
-                // Ladda fallback-data för att börja med
-                updateStatus('Laddar test-data...', 'info');
-                
-                if (loadFallbackData()) {
-                    console.log('✅ Fallback-data laddad');
-                    updateStats();
-                    updateStatus('Test-data laddad - klicka "Hämta live data" för SCB-data', 'warning');
-                } else {
-                    console.log('❌ Kunde inte ladda fallback-data');
-                    updateStatus('❌ Fel vid laddning av test-data', 'error');
-                }
-                
-                // Sätt upp knapp-lyssnare
-                const loadBtn = document.getElementById('loadBtn');
-                if (loadBtn) {
-                    loadBtn.addEventListener('click', async function() {
-                        console.log('🟢 Load-knapp klickad!');
-                        
-                        loadBtn.disabled = true;
-                        loadBtn.textContent = 'Testar API...';
-                        updateStatus('Testar anslutning till SCB API...', 'info');
-                        
-                        try {
-                            const result = await scbApi.testConnection();
-                            console.log('📊 API-test resultat:', result);
-                            
-                            if (result.success) {
-                                updateStatus('✅ ' + result.message, 'success');
-                                loadBtn.textContent = 'API fungerar ✅';
-                            } else {
-                                updateStatus('❌ ' + result.message, 'error');
-                                loadBtn.textContent = 'API-fel ❌';
+                case 'migration':
+                    return {
+                        labels: years,
+                        datasets: [
+                            {
+                                label: 'Inflyttade',
+                                data: years.map(y => data.immigration[y] || 0),
+                                borderColor: '#28a745',
+                                backgroundColor: 'rgba(40, 167, 69, 0.1)',
+                                borderWidth: 2,
+                                fill: false
+                            },
+                            {
+                                label: 'Utflyttade',
+                                data: years.map(y => data.emigration[y] || 0),
+                                borderColor: '#dc3545',
+                                backgroundColor: 'rgba(220, 53, 69, 0.1)',
+                                borderWidth: 2,
+                                fill: false
                             }
-                        } catch (error) {
-                            console.log('❌ API-test fel:', error);
-                            updateStatus('❌ API-test misslyckades: ' + error.message, 'error');
-                            loadBtn.textContent = 'Fel ❌';
-                        }
-                        
-                        setTimeout(() => {
-                            loadBtn.textContent = 'Hämta live data';
-                            loadBtn.disabled = false;
-                        }, 3000);
-                    });
+                        ]
+                    };
+                
+                case 'births_deaths':
+                    return {
+                        labels: years,
+                        datasets: [
+                            {
+                                label: 'Födda',
+                                data: years.map(y => data.births[y] || 0),
+                                borderColor: '#007bff',
+                                backgroundColor: 'rgba(0, 123, 255, 0.1)',
+                                borderWidth: 2,
+                                fill: false
+                            },
+                            {
+                                label: 'Döda',
+                                data: years.map(y => data.deaths[y] || 0),
+                                borderColor: '#6c757d',
+                                backgroundColor: 'rgba(108, 117, 125, 0.1)',
+                                borderWidth: 2,
+                                fill: false
+                            }
+                        ]
+                    };
+                
+                case 'age_groups':
+                    const latestYear = years[years.length - 1];
+                    const ages = data.ageGroups[latestYear] || {};
+                    return {
+                        labels: Object.keys(ages).map(k => k + ' år'),
+                        datasets: [{
+                            data: Object.values(ages),
+                            backgroundColor: isLiveData ? 
+                                ['#00ff00', '#00cc00', '#009900', '#00bb00', '#00dd00', '#22ff22', '#44ff44', '#66ff66', '#88ff88'] :
+                                ['#FF6384', '#36A2EB', '#FFCE56', '#4BC0C0', '#9966FF', '#FF9F40', '#C9CBCF', '#4BC0C0', '#FF6384']
+                        }]
+                    };
+                
+                case 'prognosis':
+                    const histYears = years;
+                    const progYears = Object.keys(data.prognosis || {});
+                    const allYears = [...histYears, ...progYears];
                     
-                    console.log('✅ Knapp-lyssnare tillagd');
-                } else {
-                    console.log('❌ Load-knapp inte funnen');
-                }
-                
-                console.log('🎉 Dashboard initiering klar!');
-                
-            } catch (error) {
-                console.log('❌ Fel vid initiering:', error);
-                updateStatus('❌ Fel vid initiering: ' + error.message, 'error');
-            }
-        });
-        
-        console.log('🟢 DOMContentLoaded listener tillagd');
-        console.log('🎯 JavaScript fullständigt laddat - väntar på DOM...');
-    </script>
-</body>
-</html>
+                    return {
+                        labels: allYears,
+                        datasets: [
+                            {
                                 label: 'Historisk',
                                 data: allYears.map(y => histYears.includes(y) ? data.population[y] : null),
                                 borderColor: isLiveData ? '#00ff00' : '#667eea',
                                 backgroundColor: isLiveData ? 'rgba(0, 255, 0, 0.1)' : 'rgba(102, 126, 234, 0.1)',
                                 borderWidth: 2,
+                                fill: false,
                                 spanGaps: false
                             },
                             {
@@ -540,6 +489,7 @@
                                 backgroundColor: 'rgba(255, 152, 0, 0.1)',
                                 borderWidth: 2,
                                 borderDash: [5, 5],
+                                fill: false,
                                 spanGaps: true
                             }
                         ]
@@ -554,14 +504,16 @@
                                 data: years.map(y => (data.immigration[y] || 0) - (data.emigration[y] || 0)),
                                 borderColor: '#17a2b8',
                                 backgroundColor: 'rgba(23, 162, 184, 0.1)',
-                                borderWidth: 2
+                                borderWidth: 2,
+                                fill: false
                             },
                             {
                                 label: 'Naturlig förändring',
                                 data: years.map(y => (data.births[y] || 0) - (data.deaths[y] || 0)),
                                 borderColor: '#28a745',
                                 backgroundColor: 'rgba(40, 167, 69, 0.1)',
-                                borderWidth: 2
+                                borderWidth: 2,
+                                fill: false
                             }
                         ]
                     };
@@ -572,14 +524,16 @@
 
         // Skapa huvuddiagram
         function createMainChart() {
-            const ctx = document.getElementById('mainChart').getContext('2d');
+            const ctx = document.getElementById('mainChart');
+            if (!ctx) return;
+            
             const chartData = prepareChartData();
             const chartType = document.getElementById('chartType').value;
             const isAge = document.getElementById('dataSelect').value === 'age_groups';
             
             if (mainChart) mainChart.destroy();
             
-            mainChart = new Chart(ctx, {
+            mainChart = new Chart(ctx.getContext('2d'), {
                 type: isAge ? 'doughnut' : chartType,
                 data: chartData,
                 options: {
@@ -589,7 +543,7 @@
                         y: {
                             beginAtZero: true,
                             ticks: {
-                                callback: value => value.toLocaleString()
+                                callback: value => value.toLocaleString('sv-SE')
                             }
                         }
                     },
@@ -601,11 +555,15 @@
                     }
                 }
             });
+            
+            console.log('✅ Huvuddiagram skapat');
         }
 
         // Skapa åldersdiagram
         function createAgeChart() {
-            const ctx = document.getElementById('ageChart').getContext('2d');
+            const ctx = document.getElementById('ageChart');
+            if (!ctx) return;
+            
             const years = data.years || [];
             const latestYear = years[years.length - 1];
             const ages = data.ageGroups[latestYear] || {};
@@ -616,7 +574,7 @@
                 ['#00ff00', '#00cc00', '#009900', '#00bb00', '#00dd00', '#22ff22', '#44ff44', '#66ff66', '#88ff88'] :
                 ['#FF6384', '#36A2EB', '#FFCE56', '#4BC0C0', '#9966FF', '#FF9F40', '#C9CBCF', '#4BC0C0', '#FF6384'];
             
-            ageChart = new Chart(ctx, {
+            ageChart = new Chart(ctx.getContext('2d'), {
                 type: 'doughnut',
                 data: {
                     labels: Object.keys(ages).map(k => k + ' år'),
@@ -636,6 +594,8 @@
                     }
                 }
             });
+            
+            console.log('✅ Åldersdiagram skapat');
         }
 
         // Uppdatera titel
@@ -650,8 +610,13 @@
             };
             
             const selection = document.getElementById('dataSelect').value;
-            const title = titles[selection] + (isLiveData ? ' (LIVE SCB-data)' : '');
-            document.getElementById('chartTitle').textContent = title;
+            const baseTitle = titles[selection] || 'Befolkningsdata';
+            const liveIndicator = isLiveData ? ' 🔴 LIVE SCB-data' : '';
+            
+            const titleEl = document.getElementById('chartTitle');
+            if (titleEl) {
+                titleEl.textContent = baseTitle + liveIndicator;
+            }
         }
 
         // Event handlers
@@ -660,62 +625,55 @@
             createMainChart();
         }
 
-        async function loadNewLiveData() {
-            const button = document.getElementById('loadBtn');
-            const originalText = button.textContent;
+        // Ladda data
+        async function loadData(forceRefresh = false) {
+            updateStatus('Hämtar SCB-data...', 'info');
             
-            button.disabled = true;
-            button.textContent = 'Hämtar live data...';
+            const result = await fetchSCBData();
             
-            try {
-                const success = await fetchLiveData(true);
+            if (result.success) {
+                data = convertSCBData(result.data);
+                isLiveData = !result.cached;
                 
-                if (success) {
-                    updateStats();
-                    updateVisualization();
-                    createAgeChart();
-                    button.textContent = 'Live data hämtad ✅';
-                } else {
-                    button.textContent = 'Fel ❌';
-                }
-            } catch (error) {
-                debugLog('❌ Error in loadNewLiveData:', error);
-                updateStatus('❌ Fel vid datahämtning: ' + error.message, 'error');
-                button.textContent = 'Fel ❌';
+                updateStats();
+                updateVisualization();
+                createAgeChart();
+                
+                const message = result.cached ? 'Cached SCB-data laddad' : 'Fresh SCB-data hämtad!';
+                updateStatus('✅ ' + message, 'success');
+            } else {
+                data = convertSCBData(result.data); // Fallback data
+                isLiveData = false;
+                
+                updateStats();
+                updateVisualization();
+                createAgeChart();
+                
+                updateStatus('⚠️ SCB otillgängligt - använder fallback-data', 'warning');
             }
-            
-            setTimeout(() => {
-                button.textContent = originalText;
-                button.disabled = false;
-            }, 3000);
         }
 
-        // Event listeners
-        document.addEventListener('DOMContentLoaded', async function() {
-            debugLog('🚀 Karlskoga SCB Dashboard startar...');
+        // Initiera
+        document.addEventListener('DOMContentLoaded', function() {
+            console.log('🚀 Dashboard startar...');
             
-            // Sätt upp event listeners
+            // Event listeners
             document.getElementById('dataSelect').addEventListener('change', updateVisualization);
             document.getElementById('chartType').addEventListener('change', updateVisualization);
-            document.getElementById('loadBtn').addEventListener('click', loadNewLiveData);
-            
-            try {
-                // Försök hämta live data
-                updateStatus('Hämtar initial data från SCB...', 'info');
-                const success = await fetchLiveData(false);
+            document.getElementById('loadBtn').addEventListener('click', async function() {
+                this.disabled = true;
+                this.textContent = 'Hämtar...';
                 
-                if (success) {
-                    updateStats();
-                    updateVisualization();
-                    createAgeChart();
-                    debugLog('✅ Dashboard initierad med live data');
-                } else {
-                    throw new Error('Initial datahämtning misslyckades');
-                }
-            } catch (error) {
-                debugLog('❌ Initiering misslyckades:', error);
-                updateStatus('❌ Initiering misslyckades: ' + error.message, 'error');
-            }
+                await loadData(true);
+                
+                setTimeout(() => {
+                    this.textContent = 'Hämta live data';
+                    this.disabled = false;
+                }, 2000);
+            });
+            
+            // Ladda initial data
+            loadData();
         });
     </script>
 </body>
