@@ -161,7 +161,7 @@
 <body>
     <div class="container">
         <div class="header">
-            <h1>📊 Karlskoga Befolkningsstatistik</h1>
+            <h1>📊 Karlskoga Befolkningsstatistik v2</h1>
             <p id="statusText">Laddar SCB-data för Karlskoga kommun...</p>
         </div>
 
@@ -520,6 +520,8 @@
         console.log('🟢 DOMContentLoaded listener tillagd');
         console.log('🎯 JavaScript fullständigt laddat - väntar på DOM...');
     </script>
+</body>
+</html>
                                 label: 'Historisk',
                                 data: allYears.map(y => histYears.includes(y) ? data.population[y] : null),
                                 borderColor: isLiveData ? '#00ff00' : '#667eea',
