@@ -225,10 +225,11 @@
             console.log(`📢 Status: ${message}`);
         }
 
-        // SCB API-anrop
+        // SCB API-anrop med mer detaljerad logging
         async function fetchSCBData() {
             try {
-                console.log('🔍 Hämtar SCB-data...');
+                console.log('🔍 Hämtar SCB-data från:', CONFIG.EDGE_FUNCTION_URL);
+                
                 const response = await fetch(CONFIG.EDGE_FUNCTION_URL, {
                     method: 'GET',
                     headers: {
@@ -237,29 +238,60 @@
                     }
                 });
 
+                console.log('📥 Response status:', response.status, response.statusText);
+
                 if (!response.ok) {
-                    throw new Error(`HTTP ${response.status}`);
+                    const errorText = await response.text();
+                    console.log('❌ Response error:', errorText);
+                    throw new Error(`HTTP ${response.status}: ${errorText}`);
                 }
 
                 const result = await response.json();
-                console.log('📊 SCB API-resultat:', result);
+                console.log('📊 RAW SCB API-resultat:', result);
+                console.log('🔍 Data källtyp:', result.dataSource || 'okänd');
+                console.log('💾 Är cached:', result.cached);
+                console.log('📅 Senaste uppdatering:', result.data?.lastUpdated || result.lastUpdated);
+                
+                // Visa vad som faktiskt finns i datan
+                if (result.data) {
+                    console.log('📋 Data innehåll:', {
+                        populations: result.data.populations ? 'JA' : 'NEJ',
+                        years: result.data.years ? result.data.years : 'SAKNAS',
+                        ageGroups: result.data.ageGroups ? 'JA' : 'NEJ',
+                        lastUpdated: result.data.lastUpdated || 'SAKNAS',
+                        source: result.data.source || 'SAKNAS'
+                    });
+                    
+                    // Om det finns populations, visa några exempel
+                    if (result.data.populations) {
+                        console.log('👥 Exempel befolkningssiffror:', 
+                            result.data.years?.slice(0, 3).map((year, i) => 
+                                `${year}: ${result.data.populations[i]}`
+                            )
+                        );
+                    }
+                }
 
                 if (result.success && result.data) {
                     return {
                         success: true,
                         data: result.data,
                         cached: result.cached || false,
-                        message: result.message || 'Data hämtad'
+                        dataSource: result.dataSource || 'scb_api',
+                        message: result.message || 'Data hämtad från SCB'
                     };
                 } else {
-                    throw new Error('Ingen data mottagen');
+                    throw new Error('Ingen data mottagen från SCB API');
                 }
             } catch (error) {
                 console.log('❌ SCB API-fel:', error.message);
+                console.log('⚠️ Faller tillbaka på simulerad data');
                 return {
                     success: false,
                     error: error.message,
-                    data: generateFallbackData()
+                    data: generateFallbackData(),
+                    dataSource: 'fallback',
+                    message: 'Använder fallback-data: ' + error.message
                 };
             }
         }
@@ -625,31 +657,67 @@
             createMainChart();
         }
 
-        // Ladda data
+        // Ladda data med tydlig information om källan
         async function loadData(forceRefresh = false) {
-            updateStatus('Hämtar SCB-data...', 'info');
+            const refreshParam = forceRefresh ? ' (force refresh)' : '';
+            updateStatus('Hämtar SCB-data från Edge Function...' + refreshParam, 'info');
             
             const result = await fetchSCBData();
             
+            console.log('📋 Komplett resultat:', result);
+            
             if (result.success) {
                 data = convertSCBData(result.data);
-                isLiveData = !result.cached;
+                isLiveData = !result.cached && result.dataSource !== 'fallback';
                 
                 updateStats();
                 updateVisualization();
                 createAgeChart();
                 
-                const message = result.cached ? 'Cached SCB-data laddad' : 'Fresh SCB-data hämtad!';
-                updateStatus('✅ ' + message, 'success');
+                // Skapa detaljerat statusmeddelande
+                let statusMessage = '';
+                let statusType = 'success';
+                
+                if (result.dataSource === 'fallback') {
+                    statusMessage = '⚠️ SCB otillgängligt - använder simulerad data baserad på SCB-trender';
+                    statusType = 'warning';
+                } else if (result.cached) {
+                    statusMessage = `📦 Cached SCB-data används (${result.dataSource || 'okänd källa'})`;
+                    statusType = 'info';
+                } else {
+                    statusMessage = `✅ Fresh SCB-data hämtad! (${result.dataSource || 'live från SCB'})`;
+                    statusType = 'success';
+                }
+                
+                // Lägg till tidsstämpel om den finns
+                if (result.data?.lastUpdated || result.data?.source) {
+                    const source = result.data?.source || 'SCB';
+                    const updated = result.data?.lastUpdated ? 
+                        new Date(result.data.lastUpdated).toLocaleString('sv-SE') : 'okänd tid';
+                    statusMessage += ` | Källa: ${source} | Uppdaterad: ${updated}`;
+                }
+                
+                updateStatus(statusMessage, statusType);
+                
+                // Visa i console vad som faktiskt används
+                console.log('🎯 SLUTLIG DATA-KÄLLA:', {
+                    isLiveData,
+                    dataSource: result.dataSource,
+                    cached: result.cached,
+                    dataAge: result.data?.lastUpdated,
+                    samplePopulation: data.population[data.years?.[data.years.length - 1]]
+                });
+                
             } else {
-                data = convertSCBData(result.data); // Fallback data
+                // Fel - använd fallback
+                data = convertSCBData(result.data);
                 isLiveData = false;
                 
                 updateStats();
                 updateVisualization();
                 createAgeChart();
                 
-                updateStatus('⚠️ SCB otillgängligt - använder fallback-data', 'warning');
+                updateStatus('❌ SCB API-fel: ' + result.error + ' - använder simulerad data', 'error');
             }
         }
 
