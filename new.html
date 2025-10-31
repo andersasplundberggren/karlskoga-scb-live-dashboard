@@ -3,321 +3,131 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Karlskoga kommun - Befolkningsstatistik</title>
-    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    <title>🎉 SCB API v2 - FUNGERAR!</title>
     <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-        
         body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+            font-family: Arial, sans-serif;
+            max-width: 1000px;
+            margin: 50px auto;
+            padding: 20px;
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            min-height: 100vh;
-            padding: 20px;
         }
-        
         .container {
-            max-width: 1400px;
-            margin: 0 auto;
-        }
-        
-        header {
             background: white;
             padding: 30px;
             border-radius: 15px;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
-            margin-bottom: 30px;
-            text-align: center;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.3);
         }
-        
         h1 {
-            color: #333;
-            font-size: 2.5em;
-            margin-bottom: 10px;
-        }
-        
-        .subtitle {
-            color: #666;
-            font-size: 1.2em;
-        }
-        
-        .stats-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-            gap: 20px;
-            margin-bottom: 30px;
-        }
-        
-        .stat-card {
-            background: white;
-            padding: 25px;
-            border-radius: 12px;
-            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
-            text-align: center;
-            transition: transform 0.3s ease;
-        }
-        
-        .stat-card:hover {
-            transform: translateY(-5px);
-            box-shadow: 0 10px 25px rgba(0,0,0,0.15);
-        }
-        
-        .stat-value {
-            font-size: 2.5em;
-            font-weight: bold;
             color: #667eea;
-            margin: 10px 0;
-        }
-        
-        .stat-label {
-            color: #666;
-            font-size: 1em;
-            text-transform: uppercase;
-            letter-spacing: 1px;
-        }
-        
-        .chart-container {
-            background: white;
-            padding: 30px;
-            border-radius: 15px;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
-            margin-bottom: 30px;
-        }
-        
-        .chart-title {
-            font-size: 1.5em;
-            color: #333;
-            margin-bottom: 20px;
             text-align: center;
         }
-        
-        .chart-wrapper {
-            position: relative;
-            height: 400px;
-        }
-        
-        .loading {
-            text-align: center;
-            padding: 40px;
-            color: white;
-            font-size: 1.2em;
-        }
-        
-        .error {
-            background: #ff4444;
-            color: white;
-            padding: 20px;
-            border-radius: 10px;
-            margin-bottom: 20px;
-            text-align: center;
-        }
-        
-        .info-box {
+        .result {
             background: #f8f9fa;
             padding: 20px;
-            border-radius: 10px;
-            margin-top: 20px;
-            border-left: 4px solid #667eea;
+            border-radius: 8px;
+            margin: 20px 0;
         }
-        
-        .info-box h3 {
-            color: #333;
-            margin-bottom: 10px;
-        }
-        
-        .info-box p {
-            color: #666;
-            line-height: 1.6;
-        }
-        
-        footer {
-            background: white;
-            padding: 20px;
-            border-radius: 10px;
-            text-align: center;
-            color: #666;
-            margin-top: 30px;
-        }
-        
-        footer a {
-            color: #667eea;
-            text-decoration: none;
-        }
-        
-        footer a:hover {
-            text-decoration: underline;
-        }
-
-        .debug {
+        pre {
             background: #2c3e50;
             color: #ecf0f1;
             padding: 15px;
-            border-radius: 8px;
-            margin: 20px 0;
-            font-family: 'Courier New', monospace;
-            font-size: 0.9em;
+            border-radius: 5px;
+            overflow-x: auto;
             max-height: 300px;
             overflow-y: auto;
+        }
+        button {
+            background: #667eea;
+            color: white;
+            border: none;
+            padding: 15px 30px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+            width: 100%;
+            margin: 10px 0;
+        }
+        button:hover {
+            background: #5568d3;
+        }
+        .success { 
+            color: #27ae60; 
+            font-weight: bold;
+            font-size: 1.2em;
+        }
+        .error { 
+            color: #e74c3c; 
+            font-weight: bold; 
+        }
+        .population {
+            font-size: 2em;
+            color: #667eea;
+            font-weight: bold;
+            text-align: center;
+            margin: 20px 0;
         }
     </style>
 </head>
 <body>
     <div class="container">
-        <header>
-            <h1>🏘️ Karlskoga kommun</h1>
-            <p class="subtitle">Befolkningsstatistik och framskrivning</p>
-        </header>
+        <h1>🎉 Det fungerar nu!</h1>
+        <p style="text-align: center; color: #666;">SCB API v2 med korrekta variabelnamn</p>
         
-        <div id="loading" class="loading">
-            <p>📊 Hämtar data från SCB API v2...</p>
-        </div>
+        <button onclick="hämtaKarlskogaData()">📊 Hämta Karlskoga befolkningsdata</button>
         
-        <div id="error" style="display: none;"></div>
-        
-        <div id="content" style="display: none;">
-            <div class="stats-grid">
-                <div class="stat-card">
-                    <div class="stat-label">Aktuell befolkning</div>
-                    <div class="stat-value" id="current-pop">-</div>
-                    <div class="stat-label" style="font-size: 0.8em; margin-top: 5px;" id="current-date">-</div>
-                </div>
-                
-                <div class="stat-card">
-                    <div class="stat-label">Prognos 2040</div>
-                    <div class="stat-value" id="future-pop-2040">-</div>
-                    <div class="stat-label" style="font-size: 0.8em; margin-top: 5px;">Förväntad folkmängd</div>
-                </div>
-                
-                <div class="stat-card">
-                    <div class="stat-label">Prognos 2070</div>
-                    <div class="stat-value" id="future-pop-2070">-</div>
-                    <div class="stat-label" style="font-size: 0.8em; margin-top: 5px;">Förväntad folkmängd</div>
-                </div>
-                
-                <div class="stat-card">
-                    <div class="stat-label">Förändring 2025-2070</div>
-                    <div class="stat-value" id="change-percentage">-</div>
-                    <div class="stat-label" style="font-size: 0.8em; margin-top: 5px;">Procentuell förändring</div>
-                </div>
-            </div>
-            
-            <div class="chart-container">
-                <h2 class="chart-title">📈 Befolkningsutveckling historik och prognos</h2>
-                <div class="chart-wrapper">
-                    <canvas id="populationChart"></canvas>
-                </div>
-            </div>
-            
-            <div class="chart-container">
-                <h2 class="chart-title">⚖️ Könsfördelning över tid</h2>
-                <div class="chart-wrapper">
-                    <canvas id="genderChart"></canvas>
-                </div>
-            </div>
-            
-            <div class="info-box">
-                <h3>ℹ️ Om data</h3>
-                <p>
-                    Statistiken baseras på data från SCB (Statistiska Centralbyrån) via API v2. 
-                    Historisk data visar faktisk befolkning medan framskrivningen 
-                    (prognos) är en beräkning baserad på historiska trender. 
-                    Prognoserna ska betraktas som scenarier snarare än exakta förutsägelser.
-                </p>
-            </div>
-        </div>
-        
-        <footer>
-            <p>
-                Data från <a href="https://www.scb.se" target="_blank">SCB - Statistiska Centralbyrån</a><br>
-                Använder SCB:s PxWeb API 2.0 | Uppdaterad: <span id="update-date"></span>
-            </p>
-        </footer>
+        <div id="status" class="result" style="display: none;"></div>
+        <div id="result" class="result" style="display: none;"></div>
     </div>
 
     <script>
-        // VIKTIGT: Använd det NYA API:et v2 för att undvika CORS-problem
-        const KARLSKOGA_CODE = '1883';
-        const API_BASE_V2 = 'https://statistikdatabasen.scb.se/api/v2';
-        
-        let populationChart, genderChart;
-        
-        // Huvudfunktion
-        async function init() {
-            console.log('🚀 Startar applikationen...');
+        async function hämtaKarlskogaData() {
+            const statusDiv = document.getElementById('status');
+            const resultDiv = document.getElementById('result');
             
-            try {
-                console.log('📊 Hämtar historisk data...');
-                const historicalData = await fetchHistoricalDataV2();
-                console.log('✅ Historisk data hämtad:', historicalData);
-                
-                console.log('🔮 Hämtar prognosdata...');
-                const forecastData = await fetchForecastDataV2();
-                console.log('✅ Prognosdata hämtad:', forecastData);
-                
-                // Uppdatera statistikkort
-                updateStats(historicalData, forecastData);
-                
-                // Skapa diagram
-                createPopulationChart(historicalData, forecastData);
-                createGenderChart(historicalData, forecastData);
-                
-                // Visa innehåll
-                document.getElementById('loading').style.display = 'none';
-                document.getElementById('content').style.display = 'block';
-                document.getElementById('update-date').textContent = new Date().toLocaleDateString('sv-SE');
-                
-                console.log('🎉 Applikationen laddad!');
-                
-            } catch (error) {
-                console.error('❌ Fel vid hämtning av data:', error);
-                showError('Det gick inte att hämta data från SCB. Fel: ' + error.message);
-            }
-        }
-        
-        // Hämta historisk data med API v2 (undviker CORS-problem)
-        async function fetchHistoricalDataV2() {
-            const url = `${API_BASE_V2}/tables/TAB6471/data`;
+            statusDiv.style.display = 'block';
+            resultDiv.style.display = 'block';
+            statusDiv.innerHTML = '<p>⏳ Hämtar data från SCB...</p>';
             
-            console.log('📡 Skickar request till:', url);
+            const url = 'https://statistikdatabasen.scb.se/api/v2/tables/TAB6471/data';
             
+            // KORREKT query med rätt variabelnamn från JSON-stat2!
             const query = {
                 "query": [
                     {
-                        "code": "ContentsCode",
+                        "code": "Region",  // Stor bokstav!
                         "selection": {
                             "filter": "item",
-                            "values": ["000007SF"]
+                            "values": ["1883"]  // Karlskoga
                         }
                     },
                     {
-                        "code": "Region",
+                        "code": "Alder",  // Stor bokstav, inget å!
                         "selection": {
                             "filter": "item",
-                            "values": [KARLSKOGA_CODE]
+                            "values": ["TotSA"]  // Viktigt: TotSA med stort A!
                         }
                     },
                     {
-                        "code": "Alder",
+                        "code": "Kon",  // Stor bokstav, inget ö!
                         "selection": {
                             "filter": "item",
-                            "values": ["tot"]
+                            "values": ["TotSa"]  // Samtliga män och kvinnor
                         }
                     },
                     {
-                        "code": "Kon",
+                        "code": "ContentsCode",  // Exakt som i metadata!
                         "selection": {
                             "filter": "item",
-                            "values": ["1", "2", "TotSa"]
+                            "values": ["000007SF"]  // Folkmängden per månad
                         }
                     },
                     {
-                        "code": "Tid",
+                        "code": "Tid",  // Tid, inte månad!
                         "selection": {
-                            "filter": "top",
-                            "values": [120]  // Senaste 120 månaderna (10 år)
+                            "filter": "item",
+                            "values": ["2025M01", "2025M02", "2025M03", "2025M04", 
+                                     "2025M05", "2025M06", "2025M07", "2025M08"]
                         }
                     }
                 ],
@@ -326,458 +136,60 @@
                 }
             };
             
-            const response = await fetch(url, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify(query)
-            });
-            
-            if (!response.ok) {
-                const errorText = await response.text();
-                console.error('❌ API-fel:', response.status, errorText);
-                throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-            }
-            
-            const data = await response.json();
-            console.log('📦 Mottagen data-struktur:', Object.keys(data));
-            return data;
-        }
-        
-        // Hämta prognosdata med API v2
-        async function fetchForecastDataV2() {
-            const url = `${API_BASE_V2}/tables/BefProgRegFakN22/data`;
-            
-            console.log('📡 Skickar request till:', url);
-            
-            const query = {
-                "query": [
-                    {
-                        "code": "Region",
-                        "selection": {
-                            "filter": "item",
-                            "values": [KARLSKOGA_CODE]
-                        }
-                    },
-                    {
-                        "code": "UtlSvBakgr",
-                        "selection": {
-                            "filter": "item",
-                            "values": ["TOT"]
-                        }
-                    },
-                    {
-                        "code": "Alder",
-                        "selection": {
-                            "filter": "item",
-                            "values": ["tot"]
-                        }
-                    },
-                    {
-                        "code": "Kon",
-                        "selection": {
-                            "filter": "item",
-                            "values": ["1", "2", "1+2"]
-                        }
-                    },
-                    {
-                        "code": "Tid",
-                        "selection": {
-                            "filter": "item",
-                            "values": ["2022", "2025", "2030", "2035", "2040", "2045", "2050", "2055", "2060", "2065", "2070"]
-                        }
-                    }
-                ],
-                "response": {
-                    "format": "json-stat2"
-                }
-            };
-            
-            const response = await fetch(url, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify(query)
-            });
-            
-            if (!response.ok) {
-                const errorText = await response.text();
-                console.error('❌ API-fel:', response.status, errorText);
-                throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-            }
-            
-            const data = await response.json();
-            console.log('📦 Mottagen prognosdata-struktur:', Object.keys(data));
-            return data;
-        }
-        
-        // Uppdatera statistikkort
-        function updateStats(historical, forecast) {
-            console.log('📊 Uppdaterar statistikkort...');
+            console.log('📤 Skickar korrekt query:', JSON.stringify(query, null, 2));
             
             try {
-                const currentPop = extractLatestPopulation(historical);
-                document.getElementById('current-pop').textContent = 
-                    currentPop.value.toLocaleString('sv-SE');
-                document.getElementById('current-date').textContent = currentPop.period;
+                const response = await fetch(url, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(query)
+                });
                 
-                const pop2040 = extractForecastValue(forecast, '2040');
-                const pop2070 = extractForecastValue(forecast, '2070');
+                console.log('📨 Response status:', response.status);
                 
-                document.getElementById('future-pop-2040').textContent = 
-                    Math.round(pop2040).toLocaleString('sv-SE');
-                document.getElementById('future-pop-2070').textContent = 
-                    Math.round(pop2070).toLocaleString('sv-SE');
+                if (!response.ok) {
+                    const errorText = await response.text();
+                    console.error('❌ Error:', errorText);
+                    statusDiv.innerHTML = `<p class="error">❌ Fel: HTTP ${response.status}</p>`;
+                    resultDiv.innerHTML = `<pre>${errorText}</pre>`;
+                    return;
+                }
                 
-                const change = ((pop2070 - currentPop.value) / currentPop.value * 100);
-                const changeText = change >= 0 ? `+${change.toFixed(1)}%` : `${change.toFixed(1)}%`;
-                document.getElementById('change-percentage').textContent = changeText;
-                document.getElementById('change-percentage').style.color = change >= 0 ? '#4CAF50' : '#f44336';
+                const data = await response.json();
+                console.log('✅ SUCCESS! Data mottagen:', data);
                 
-                console.log('✅ Statistikkort uppdaterade');
+                // Visa resultat
+                const values = data.value;
+                const months = Object.keys(data.dimension.Tid.category.label);
+                
+                let output = '<div class="success">✅ API FUNGERAR PERFEKT!</div>';
+                output += '<div class="population">' + values[values.length - 1].toLocaleString('sv-SE') + '</div>';
+                output += '<p style="text-align: center; color: #666;">Invånare i Karlskoga (augusti 2025)</p>';
+                
+                output += '<h3>📊 Befolkningsutveckling 2025:</h3><ul>';
+                months.forEach((month, idx) => {
+                    output += `<li><strong>${month}:</strong> ${values[idx].toLocaleString('sv-SE')} invånare</li>`;
+                });
+                output += '</ul>';
+                
+                output += '<p style="color: #27ae60; font-weight: bold; margin-top: 20px;">🎉 Nu kan du använda detta i din app!</p>';
+                
+                statusDiv.innerHTML = output;
+                resultDiv.innerHTML = `<h4>📋 Fullständig JSON-stat2 data:</h4><pre>${JSON.stringify(data, null, 2)}</pre>`;
+                
             } catch (error) {
-                console.error('❌ Fel vid uppdatering av statistikkort:', error);
-                throw error;
+                console.error('❌ Fetch error:', error);
+                statusDiv.innerHTML = `<p class="error">❌ Fel: ${error.message}</p>`;
+                resultDiv.innerHTML = `<pre>${error.stack}</pre>`;
             }
         }
         
-        // Extrahera senaste befolkningsvärde
-        function extractLatestPopulation(data) {
-            const values = data.value;
-            const times = data.dimension.Tid.category.index;
-            const timeLabels = data.dimension.Tid.category.label;
-            const konIndex = data.dimension.Kon.category.index;
-            
-            // Hitta index för "TotSa"
-            const totSaPosition = Object.keys(konIndex).indexOf('TotSa');
-            
-            // Senaste tidpunkten
-            const timeKeys = Object.keys(times);
-            const latestTimeKey = timeKeys[timeKeys.length - 1];
-            const latestTimeIndex = times[latestTimeKey];
-            
-            // Beräkna position i values-array
-            const numGenders = Object.keys(konIndex).length;
-            const valueIndex = latestTimeIndex * numGenders + totSaPosition;
-            
-            return {
-                value: values[valueIndex],
-                period: timeLabels[latestTimeKey]
-            };
-        }
-        
-        // Extrahera prognosvärde
-        function extractForecastValue(data, year) {
-            const values = data.value;
-            const times = data.dimension.Tid.category.index;
-            const konIndex = data.dimension.Kon.category.index;
-            
-            const yearIndex = times[year];
-            const totalPosition = Object.keys(konIndex).indexOf('1+2');
-            const numGenders = Object.keys(konIndex).length;
-            
-            const valueIndex = yearIndex * numGenders + totalPosition;
-            
-            return values[valueIndex];
-        }
-        
-        // Skapa befolkningsdiagram
-        function createPopulationChart(historical, forecast) {
-            console.log('📈 Skapar befolkningsdiagram...');
-            
-            const ctx = document.getElementById('populationChart').getContext('2d');
-            
-            const historicalYears = extractYearlyData(historical);
-            const forecastYears = extractForecastYearlyData(forecast);
-            
-            // Kombinera labels
-            const allYears = [...historicalYears.years, ...forecastYears.years.filter(y => !historicalYears.years.includes(y))];
-            
-            // Skapa datasets
-            const historicalValues = allYears.map(year => {
-                const idx = historicalYears.years.indexOf(year);
-                return idx >= 0 ? historicalYears.values[idx] : null;
-            });
-            
-            const forecastValues = allYears.map(year => {
-                const idx = forecastYears.years.indexOf(year);
-                return idx >= 0 ? forecastYears.values[idx] : null;
-            });
-            
-            populationChart = new Chart(ctx, {
-                type: 'line',
-                data: {
-                    labels: allYears,
-                    datasets: [
-                        {
-                            label: 'Faktisk befolkning',
-                            data: historicalValues,
-                            borderColor: '#667eea',
-                            backgroundColor: 'rgba(102, 126, 234, 0.1)',
-                            borderWidth: 3,
-                            pointRadius: 0,
-                            tension: 0.4
-                        },
-                        {
-                            label: 'Prognos',
-                            data: forecastValues,
-                            borderColor: '#f093fb',
-                            backgroundColor: 'rgba(240, 147, 251, 0.1)',
-                            borderWidth: 3,
-                            borderDash: [5, 5],
-                            pointRadius: 0,
-                            tension: 0.4
-                        }
-                    ]
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    plugins: {
-                        legend: {
-                            display: true,
-                            position: 'top'
-                        },
-                        tooltip: {
-                            mode: 'index',
-                            intersect: false,
-                            callbacks: {
-                                label: function(context) {
-                                    let label = context.dataset.label || '';
-                                    if (label) {
-                                        label += ': ';
-                                    }
-                                    if (context.parsed.y !== null) {
-                                        label += Math.round(context.parsed.y).toLocaleString('sv-SE') + ' invånare';
-                                    }
-                                    return label;
-                                }
-                            }
-                        }
-                    },
-                    scales: {
-                        y: {
-                            beginAtZero: false,
-                            ticks: {
-                                callback: function(value) {
-                                    return Math.round(value).toLocaleString('sv-SE');
-                                }
-                            }
-                        }
-                    }
-                }
-            });
-            
-            console.log('✅ Befolkningsdiagram skapat');
-        }
-        
-        // Extrahera årsdata från månadsdata
-        function extractYearlyData(data) {
-            const values = data.value;
-            const times = Object.keys(data.dimension.Tid.category.index);
-            const konKeys = Object.keys(data.dimension.Kon.category.index);
-            const totSaIndex = konKeys.indexOf('TotSa');
-            const numGenders = konKeys.length;
-            
-            const years = new Set();
-            const yearlyValues = {};
-            
-            times.forEach((time, idx) => {
-                const year = time.substring(0, 4);
-                const month = time.substring(5, 7);
-                
-                if (month === '12') {
-                    years.add(year);
-                    const valueIndex = idx * numGenders + totSaIndex;
-                    yearlyValues[year] = values[valueIndex];
-                }
-            });
-            
-            const sortedYears = Array.from(years).sort();
-            return {
-                years: sortedYears,
-                values: sortedYears.map(y => yearlyValues[y])
-            };
-        }
-        
-        // Extrahera årsdata från prognosdata
-        function extractForecastYearlyData(data) {
-            const values = data.value;
-            const times = Object.keys(data.dimension.Tid.category.index);
-            const konKeys = Object.keys(data.dimension.Kon.category.index);
-            const totalIndex = konKeys.indexOf('1+2');
-            const numGenders = konKeys.length;
-            
-            const years = [];
-            const yearlyValues = [];
-            
-            times.forEach((year, idx) => {
-                years.push(year);
-                const valueIndex = idx * numGenders + totalIndex;
-                yearlyValues.push(values[valueIndex]);
-            });
-            
-            return { years, values: yearlyValues };
-        }
-        
-        // Skapa könsdiagram
-        function createGenderChart(historical, forecast) {
-            console.log('👥 Skapar könsdiagram...');
-            
-            const ctx = document.getElementById('genderChart').getContext('2d');
-            const genderData = extractGenderData(historical, forecast);
-            
-            genderChart = new Chart(ctx, {
-                type: 'line',
-                data: {
-                    labels: genderData.years,
-                    datasets: [
-                        {
-                            label: 'Män',
-                            data: genderData.men,
-                            borderColor: '#4A90E2',
-                            backgroundColor: 'rgba(74, 144, 226, 0.1)',
-                            borderWidth: 2,
-                            tension: 0.4
-                        },
-                        {
-                            label: 'Kvinnor',
-                            data: genderData.women,
-                            borderColor: '#E94B8C',
-                            backgroundColor: 'rgba(233, 75, 140, 0.1)',
-                            borderWidth: 2,
-                            tension: 0.4
-                        }
-                    ]
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    plugins: {
-                        legend: {
-                            display: true,
-                            position: 'top'
-                        }
-                    },
-                    scales: {
-                        y: {
-                            beginAtZero: false,
-                            ticks: {
-                                callback: function(value) {
-                                    return Math.round(value).toLocaleString('sv-SE');
-                                }
-                            }
-                        }
-                    }
-                }
-            });
-            
-            console.log('✅ Könsdiagram skapat');
-        }
-        
-        // Extrahera könsdata
-        function extractGenderData(historical, forecast) {
-            const historicalYearly = extractYearlyDataByGender(historical);
-            const forecastYearly = extractForecastDataByGender(forecast);
-            
-            // Kombinera utan dubbletter
-            const allYears = [...historicalYearly.years];
-            forecastYearly.years.forEach(year => {
-                if (!allYears.includes(year)) {
-                    allYears.push(year);
-                }
-            });
-            allYears.sort();
-            
-            // Fyll i data
-            const men = allYears.map(year => {
-                let idx = historicalYearly.years.indexOf(year);
-                if (idx >= 0) return historicalYearly.men[idx];
-                idx = forecastYearly.years.indexOf(year);
-                if (idx >= 0) return forecastYearly.men[idx];
-                return null;
-            });
-            
-            const women = allYears.map(year => {
-                let idx = historicalYearly.years.indexOf(year);
-                if (idx >= 0) return historicalYearly.women[idx];
-                idx = forecastYearly.years.indexOf(year);
-                if (idx >= 0) return forecastYearly.women[idx];
-                return null;
-            });
-            
-            return { years: allYears, men, women };
-        }
-        
-        function extractYearlyDataByGender(data) {
-            const values = data.value;
-            const times = Object.keys(data.dimension.Tid.category.index);
-            const konKeys = Object.keys(data.dimension.Kon.category.index);
-            
-            const menIndex = konKeys.indexOf('1');
-            const womenIndex = konKeys.indexOf('2');
-            const numGenders = konKeys.length;
-            
-            const years = new Set();
-            const menValues = {};
-            const womenValues = {};
-            
-            times.forEach((time, idx) => {
-                const year = time.substring(0, 4);
-                const month = time.substring(5, 7);
-                
-                if (month === '12') {
-                    years.add(year);
-                    menValues[year] = values[idx * numGenders + menIndex];
-                    womenValues[year] = values[idx * numGenders + womenIndex];
-                }
-            });
-            
-            const sortedYears = Array.from(years).sort();
-            return {
-                years: sortedYears,
-                men: sortedYears.map(y => menValues[y]),
-                women: sortedYears.map(y => womenValues[y])
-            };
-        }
-        
-        function extractForecastDataByGender(data) {
-            const values = data.value;
-            const times = Object.keys(data.dimension.Tid.category.index);
-            const konKeys = Object.keys(data.dimension.Kon.category.index);
-            
-            const menIndex = konKeys.indexOf('1');
-            const womenIndex = konKeys.indexOf('2');
-            const numGenders = konKeys.length;
-            
-            const years = [];
-            const menValues = [];
-            const womenValues = [];
-            
-            times.forEach((year, idx) => {
-                years.push(year);
-                menValues.push(values[idx * numGenders + menIndex]);
-                womenValues.push(values[idx * numGenders + womenIndex]);
-            });
-            
-            return { years, men: menValues, women: womenValues };
-        }
-        
-        function showError(message) {
-            document.getElementById('loading').style.display = 'none';
-            const errorDiv = document.getElementById('error');
-            errorDiv.className = 'error';
-            errorDiv.innerHTML = `<strong>❌ Fel:</strong> ${message}<br><br>
-                <small>Tips: Kontrollera webbläsarens console (F12) för mer information.</small>`;
-            errorDiv.style.display = 'block';
-        }
-        
-        // Starta applikationen när sidan laddats
-        console.log('🌟 Karlskoga Befolkningsvisualisering');
-        console.log('📍 Använder SCB API v2 (CORS-vänligt)');
-        init();
+        console.log('🎯 LÖSNING HITTAD!');
+        console.log('✅ Använd stora bokstäver: Region, Alder, Kon, ContentsCode, Tid');
+        console.log('✅ Använd TotSA (med stort A) för ålder');
+        console.log('✅ Använd TotSa (med litet a) för kön');
     </script>
 </body>
 </html>
