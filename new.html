@@ -1,0 +1,466 @@
+<!DOCTYPE html>
+<html lang="sv">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Karlskoga kommun - Befolkningsstatistik</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+        
+        header {
+            background: white;
+            padding: 30px;
+            border-radius: 15px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+            margin-bottom: 30px;
+            text-align: center;
+        }
+        
+        h1 {
+            color: #333;
+            font-size: 2.5em;
+            margin-bottom: 10px;
+        }
+        
+        .subtitle {
+            color: #666;
+            font-size: 1.2em;
+        }
+        
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+        
+        .stat-card {
+            background: white;
+            padding: 25px;
+            border-radius: 12px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+            text-align: center;
+            transition: transform 0.3s ease;
+        }
+        
+        .stat-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 25px rgba(0,0,0,0.15);
+        }
+        
+        .stat-value {
+            font-size: 2.5em;
+            font-weight: bold;
+            color: #667eea;
+            margin: 10px 0;
+        }
+        
+        .stat-label {
+            color: #666;
+            font-size: 1em;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+        
+        .chart-container {
+            background: white;
+            padding: 30px;
+            border-radius: 15px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+            margin-bottom: 30px;
+        }
+        
+        .chart-title {
+            font-size: 1.5em;
+            color: #333;
+            margin-bottom: 20px;
+            text-align: center;
+        }
+        
+        .chart-wrapper {
+            position: relative;
+            height: 400px;
+        }
+        
+        .loading {
+            text-align: center;
+            padding: 40px;
+            color: white;
+            font-size: 1.2em;
+        }
+        
+        .error {
+            background: #ff4444;
+            color: white;
+            padding: 20px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+            text-align: center;
+        }
+        
+        .info-box {
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 10px;
+            margin-top: 20px;
+            border-left: 4px solid #667eea;
+        }
+        
+        .info-box h3 {
+            color: #333;
+            margin-bottom: 10px;
+        }
+        
+        .info-box p {
+            color: #666;
+            line-height: 1.6;
+        }
+        
+        footer {
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            text-align: center;
+            color: #666;
+            margin-top: 30px;
+        }
+        
+        footer a {
+            color: #667eea;
+            text-decoration: none;
+        }
+        
+        footer a:hover {
+            text-decoration: underline;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>🏘️ Karlskoga kommun</h1>
+            <p class="subtitle">Befolkningsstatistik från SCB</p>
+        </header>
+        
+        <div id="loading" class="loading">
+            <p>📊 Hämtar data från SCB...</p>
+        </div>
+        
+        <div id="error" style="display: none;"></div>
+        
+        <div id="content" style="display: none;">
+            <div class="stats-grid">
+                <div class="stat-card">
+                    <div class="stat-label">Aktuell befolkning</div>
+                    <div class="stat-value" id="current-pop">-</div>
+                    <div class="stat-label" style="font-size: 0.8em; margin-top: 5px;" id="current-date">-</div>
+                </div>
+                
+                <div class="stat-card">
+                    <div class="stat-label">Förändring senaste året</div>
+                    <div class="stat-value" id="yearly-change">-</div>
+                    <div class="stat-label" style="font-size: 0.8em; margin-top: 5px;">Jämfört med förra året</div>
+                </div>
+                
+                <div class="stat-card">
+                    <div class="stat-label">Män</div>
+                    <div class="stat-value" id="men-pop">-</div>
+                    <div class="stat-label" style="font-size: 0.8em; margin-top: 5px;">Aktuellt antal</div>
+                </div>
+                
+                <div class="stat-card">
+                    <div class="stat-label">Kvinnor</div>
+                    <div class="stat-value" id="women-pop">-</div>
+                    <div class="stat-label" style="font-size: 0.8em; margin-top: 5px;">Aktuellt antal</div>
+                </div>
+            </div>
+            
+            <div class="chart-container">
+                <h2 class="chart-title">📈 Befolkningsutveckling över tid</h2>
+                <div class="chart-wrapper">
+                    <canvas id="populationChart"></canvas>
+                </div>
+            </div>
+            
+            <div class="chart-container">
+                <h2 class="chart-title">⚖️ Könsfördelning över tid</h2>
+                <div class="chart-wrapper">
+                    <canvas id="genderChart"></canvas>
+                </div>
+            </div>
+            
+            <div class="info-box">
+                <h3>ℹ️ Om data</h3>
+                <p>
+                    Statistiken baseras på månadsdata från SCB (Statistiska Centralbyrån). 
+                    Data uppdateras automatiskt när SCB publicerar ny statistik.
+                </p>
+                <p style="margin-top: 10px;">
+                    <strong>Vill du se befolkningsprognoser?</strong><br>
+                    För prognosdata 2022-2070, besök 
+                    <a href="https://www.statistikdatabasen.scb.se/pxweb/sv/ssd/START__BE__BE0401__BE0401B/" target="_blank">
+                        SCB:s framskrivningar →
+                    </a>
+                </p>
+            </div>
+        </div>
+        
+        <footer>
+            <p>
+                Data från <a href="https://www.scb.se" target="_blank">SCB - Statistiska Centralbyrån</a><br>
+                <a href="https://www.statistikdatabasen.scb.se/pxweb/sv/ssd/START__BE__BE0101/" target="_blank">Utforska mer statistik →</a><br>
+                Uppdaterad: <span id="update-date"></span>
+            </p>
+        </footer>
+    </div>
+
+    <script>
+        const KARLSKOGA_CODE = '1883';
+        const API_V1_BASE = 'https://api.scb.se/OV0104/v1/doris/sv/ssd';
+        
+        let populationChart, genderChart;
+        
+        async function init() {
+            try {
+                console.log('Startar datahämtning från SCB...');
+                const monthlyData = await fetchMonthlyData();
+                
+                if (!monthlyData || !monthlyData.data || monthlyData.data.length === 0) {
+                    throw new Error('Ingen data returnerades från API');
+                }
+                
+                console.log('Data hämtad:', monthlyData.data.length, 'datapunkter');
+                updateStats(monthlyData);
+                createPopulationChart(monthlyData);
+                createGenderChart(monthlyData);
+                
+                document.getElementById('loading').style.display = 'none';
+                document.getElementById('content').style.display = 'block';
+                document.getElementById('update-date').textContent = new Date().toLocaleDateString('sv-SE');
+                
+            } catch (error) {
+                console.error('Fel vid hämtning av data:', error);
+                document.getElementById('loading').style.display = 'none';
+                showError('Det gick inte att hämta data från SCB. ' + error.message);
+            }
+        }
+        
+        async function fetchMonthlyData() {
+            const url = API_V1_BASE + '/BE/BE0101/BE0101A/BefolkningNy';
+            
+            const query = {
+                "query": [
+                    {
+                        "code": "Region",
+                        "selection": {"filter": "item", "values": [KARLSKOGA_CODE]}
+                    },
+                    {
+                        "code": "Civilstand",
+                        "selection": {"filter": "item", "values": ["TOT"]}
+                    },
+                    {
+                        "code": "Alder",
+                        "selection": {"filter": "item", "values": ["tot"]}
+                    },
+                    {
+                        "code": "Kon",
+                        "selection": {"filter": "item", "values": ["1", "2"]}
+                    },
+                    {
+                        "code": "ContentsCode",
+                        "selection": {"filter": "item", "values": ["BE0101N1"]}
+                    },
+                    {
+                        "code": "Tid",
+                        "selection": {"filter": "item", "values": ["*"]}
+                    }
+                ],
+                "response": {"format": "json"}
+            };
+            
+            const response = await fetch(url, {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify(query)
+            });
+            
+            if (!response.ok) {
+                throw new Error(`HTTP ${response.status}`);
+            }
+            
+            return await response.json();
+        }
+        
+        function updateStats(data) {
+            const dataPoints = data.data;
+            const lastIndex = dataPoints.length - 1;
+            
+            const lastWomen = parseInt(dataPoints[lastIndex].values[0]);
+            const lastMen = parseInt(dataPoints[lastIndex - 1].values[0]);
+            const currentTotal = lastMen + lastWomen;
+            
+            const prevYearIndex = lastIndex - 24;
+            let yearChange = 0;
+            
+            if (prevYearIndex >= 0) {
+                const prevWomen = parseInt(dataPoints[prevYearIndex].values[0]);
+                const prevMen = parseInt(dataPoints[prevYearIndex - 1].values[0]);
+                yearChange = currentTotal - (prevMen + prevWomen);
+            }
+            
+            document.getElementById('current-pop').textContent = currentTotal.toLocaleString('sv-SE');
+            document.getElementById('current-date').textContent = dataPoints[lastIndex].key[5] || 'Senaste data';
+            document.getElementById('men-pop').textContent = lastMen.toLocaleString('sv-SE');
+            document.getElementById('women-pop').textContent = lastWomen.toLocaleString('sv-SE');
+            
+            const changeText = yearChange >= 0 ? `+${yearChange}` : `${yearChange}`;
+            document.getElementById('yearly-change').textContent = changeText;
+            document.getElementById('yearly-change').style.color = yearChange >= 0 ? '#4CAF50' : '#f44336';
+        }
+        
+        function createPopulationChart(data) {
+            const ctx = document.getElementById('populationChart').getContext('2d');
+            const yearlyData = processToYearlyData(data);
+            
+            populationChart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: yearlyData.years,
+                    datasets: [{
+                        label: 'Total befolkning',
+                        data: yearlyData.totals,
+                        borderColor: '#667eea',
+                        backgroundColor: 'rgba(102, 126, 234, 0.1)',
+                        borderWidth: 3,
+                        pointRadius: 3,
+                        tension: 0.4,
+                        fill: true
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {display: true, position: 'top'},
+                        tooltip: {
+                            callbacks: {
+                                label: (ctx) => ctx.dataset.label + ': ' + ctx.parsed.y.toLocaleString('sv-SE') + ' invånare'
+                            }
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: false,
+                            ticks: {callback: (v) => v.toLocaleString('sv-SE')},
+                            title: {display: true, text: 'Antal invånare'}
+                        }
+                    }
+                }
+            });
+        }
+        
+        function createGenderChart(data) {
+            const ctx = document.getElementById('genderChart').getContext('2d');
+            const yearlyData = processToYearlyData(data);
+            
+            genderChart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: yearlyData.years,
+                    datasets: [
+                        {
+                            label: 'Män',
+                            data: yearlyData.years.map(y => yearlyData.yearlyMap[y].men),
+                            borderColor: '#4A90E2',
+                            backgroundColor: 'rgba(74, 144, 226, 0.1)',
+                            borderWidth: 2,
+                            tension: 0.4,
+                            fill: true
+                        },
+                        {
+                            label: 'Kvinnor',
+                            data: yearlyData.years.map(y => yearlyData.yearlyMap[y].women),
+                            borderColor: '#E94B8C',
+                            backgroundColor: 'rgba(233, 75, 140, 0.1)',
+                            borderWidth: 2,
+                            tension: 0.4,
+                            fill: true
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {display: true, position: 'top'},
+                        tooltip: {
+                            callbacks: {
+                                label: (ctx) => ctx.dataset.label + ': ' + ctx.parsed.y.toLocaleString('sv-SE') + ' personer'
+                            }
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: false,
+                            ticks: {callback: (v) => v.toLocaleString('sv-SE')},
+                            title: {display: true, text: 'Antal personer'}
+                        }
+                    }
+                }
+            });
+        }
+        
+        function processToYearlyData(data) {
+            const yearlyMap = {};
+            
+            data.data.forEach(point => {
+                const year = point.key[5].substring(0, 4);
+                const gender = point.key[3];
+                const value = parseInt(point.values[0]);
+                
+                if (!yearlyMap[year]) yearlyMap[year] = {men: 0, women: 0};
+                
+                if (gender === '1') yearlyMap[year].men = value;
+                else if (gender === '2') yearlyMap[year].women = value;
+            });
+            
+            const years = Object.keys(yearlyMap).sort();
+            const totals = years.map(y => yearlyMap[y].men + yearlyMap[y].women);
+            
+            return {years, totals, yearlyMap};
+        }
+        
+        function showError(message) {
+            const errorDiv = document.getElementById('error');
+            errorDiv.className = 'error';
+            errorDiv.innerHTML = `
+                <strong>Fel vid datahämtning</strong><br>${message}<br><br>
+                <a href="https://www.statistikdatabasen.scb.se/pxweb/sv/ssd/START__BE__BE0101/BefolkningNy/" 
+                   target="_blank" style="color: white; text-decoration: underline;">
+                   Öppna SCB:s databas direkt →
+                </a>
+            `;
+            errorDiv.style.display = 'block';
+        }
+        
+        init();
+    </script>
+</body>
+</html>
